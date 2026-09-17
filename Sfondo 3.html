@@ -1,0 +1,3220 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width,
+               initial-scale=1.0,
+               maximum-scale=1.0,
+               user-scalable=no">
+
+<title>Prato infinito</title>
+
+<style>
+
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+html,
+body {
+
+    margin: 0;
+    padding: 0;
+
+    width: 100%;
+    height: 100%;
+
+    overflow: hidden;
+
+    background: #78c7f3;
+
+    touch-action: none;
+}
+
+canvas {
+
+    display: block;
+
+    width: 100vw;
+    height: 100vh;
+
+    image-rendering: pixelated;
+
+    transition: filter 0.25s ease-out;
+}
+
+
+/* =====================================================
+   SELETTORE DIFFICOLTÀ & INDICATORI
+===================================================== */
+
+#difficulty-btn {
+
+    position: fixed;
+
+    top: 10px;
+    left: 12px;
+
+    padding: 5px 10px;
+
+    background: rgba(0, 0, 0, 0.45);
+
+    color: white;
+
+    font-family: Arial, sans-serif;
+    font-size: 11px;
+    font-weight: bold;
+
+    border: 1.5px solid rgba(255, 255, 255, 0.6);
+    border-radius: 6px;
+
+    cursor: pointer;
+
+    z-index: 25;
+
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+#difficulty-btn:active {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(0.96);
+}
+
+#status {
+
+    position: fixed;
+
+    top: 10px;
+    left: 50%;
+
+    transform: translateX(-50%);
+
+    padding: 6px 12px;
+
+    background: rgba(0,0,0,0.40);
+
+    color: white;
+
+    font-family: Arial, sans-serif;
+
+    font-size: 12px;
+    font-weight: bold;
+
+    border-radius: 5px;
+
+    z-index: 10;
+
+    pointer-events: none;
+}
+
+
+/* =====================================================
+   BARRA VITA NEMICO
+===================================================== */
+
+#enemy-hud {
+
+    position: fixed;
+
+    top: 42px;
+    left: 50%;
+
+    transform: translateX(-50%);
+
+    width: min(82vw, 240px);
+
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+
+    z-index: 10;
+
+    pointer-events: none;
+
+    font-family: Arial, sans-serif;
+}
+
+#enemy-label {
+
+    display: flex;
+    justify-content: space-between;
+
+    font-size: 11px;
+    font-weight: bold;
+
+    color: #ffffff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.85);
+
+    letter-spacing: 0.5px;
+    padding: 0 2px;
+}
+
+#enemy-bar-bg {
+
+    width: 100%;
+    height: 12px;
+
+    background: rgba(0, 0, 0, 0.55);
+
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    border-radius: 6px;
+
+    padding: 1px;
+
+    box-shadow: 0 2px 4px rgba(0,0,0,0.35);
+
+    overflow: hidden;
+}
+
+#enemy-bar-fill {
+
+    width: 100%;
+    height: 100%;
+
+    background: linear-gradient(90deg, #e53935, #ff5252);
+
+    border-radius: 3px;
+
+    transition: width 0.12s ease-out;
+}
+
+
+/* =====================================================
+   HUD PUNTI (IN ALTO A DESTRA, IMPILATI)
+===================================================== */
+
+#points-hud {
+
+    position: fixed;
+
+    top: 12px;
+    right: 14px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    gap: 6px;
+
+    z-index: 20;
+
+    pointer-events: none;
+}
+
+.point-icon {
+
+    width: 28px;
+    height: 28px;
+
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.55));
+
+    animation: pointPopIn 0.2s ease-out;
+}
+
+@keyframes pointPopIn {
+    0% { transform: scale(0.3); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+
+/* =====================================================
+   BANNER TELETRASPORTO (PLACEHOLDER)
+===================================================== */
+
+#teleport-banner {
+
+    position: fixed;
+
+    top: 48%;
+    left: 50%;
+
+    transform: translate(-50%, -50%) scale(0.92);
+
+    padding: 18px 24px;
+
+    background: rgba(15, 20, 28, 0.90);
+
+    border: 3px solid #ff9800;
+    border-radius: 14px;
+
+    color: #ffffff;
+
+    font-family: Arial, sans-serif;
+    text-align: center;
+
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.75);
+
+    z-index: 50;
+
+    pointer-events: none;
+
+    opacity: 0;
+
+    transition: opacity 0.25s ease, transform 0.25s ease;
+
+    max-width: 90vw;
+}
+
+#teleport-banner.visible {
+
+    opacity: 1;
+
+    transform: translate(-50%, -50%) scale(1);
+}
+
+#teleport-title {
+
+    font-size: 17px;
+    font-weight: bold;
+
+    color: #ffb74d;
+
+    margin-bottom: 6px;
+
+    letter-spacing: 0.8px;
+}
+
+#teleport-desc {
+
+    font-size: 13px;
+
+    color: #e0e0e0;
+}
+
+
+/* =====================================================
+   CONTROLLI TOUCH
+===================================================== */
+
+#controls {
+
+    position: fixed;
+
+    left: 0;
+    right: 0;
+
+    bottom: 18px;
+
+    display: flex;
+
+    justify-content: center;
+    align-items: center;
+
+    gap: 16px;
+
+    z-index: 20;
+}
+
+
+.button {
+
+    width: 78px;
+    height: 68px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 12px;
+
+    border: 3px solid rgba(255,255,255,0.7);
+
+    background: rgba(0,0,0,0.35);
+
+    color: white;
+
+    font-family: Arial, sans-serif;
+
+    font-weight: bold;
+
+    font-size: 27px;
+
+    box-shadow:
+        0 4px 0 rgba(0,0,0,0.25);
+
+    touch-action: none;
+}
+
+
+#attack {
+
+    width: 124px;
+    height: 68px;
+
+    font-size: 15px;
+    letter-spacing: 0.8px;
+
+    background: rgba(180,35,35,0.45);
+
+    border: 3px solid rgba(255,200,200,0.7);
+}
+
+
+.button.active {
+
+    background: rgba(255,255,255,0.35);
+
+    transform: translateY(3px);
+
+    box-shadow:
+        0 1px 0 rgba(0,0,0,0.25);
+}
+
+
+#attack.active {
+
+    background: rgba(220,50,50,0.75);
+}
+
+
+/* =====================================================
+   SCHERMO VITTORIA
+===================================================== */
+
+#victory-screen {
+
+    position: fixed;
+
+    top: 0;
+    left: 0;
+
+    width: 100%;
+    height: 100%;
+
+    background: rgba(10, 26, 16, 0.88);
+
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+
+    z-index: 100;
+
+    font-family: Arial, sans-serif;
+    color: white;
+    text-align: center;
+
+    backdrop-filter: blur(5px);
+    padding: 20px;
+}
+
+#victory-screen.visible {
+
+    display: flex;
+}
+
+#victory-title {
+
+    font-size: 38px;
+    font-weight: bold;
+    color: #4cd964;
+    text-shadow: 0 0 20px rgba(76, 217, 100, 0.6);
+
+    margin-bottom: 12px;
+    letter-spacing: 2px;
+}
+
+#victory-desc {
+
+    font-size: 18px;
+    color: #e0f2e9;
+    margin-bottom: 24px;
+}
+
+#restart-btn {
+
+    padding: 14px 34px;
+    font-size: 17px;
+    font-weight: bold;
+
+    color: #ffffff;
+    background: #2e7d32;
+    border: 2px solid #81c784;
+    border-radius: 12px;
+
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    touch-action: manipulation;
+}
+
+#restart-btn:active {
+
+    transform: translateY(2px);
+    background: #388e3c;
+}
+
+
+@media (min-width: 800px) {
+
+    #controls {
+
+        opacity: 0.12;
+
+        transition: opacity 0.2s;
+    }
+
+    #controls:hover {
+
+        opacity: 1;
+    }
+
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<canvas id="game"></canvas>
+
+<div id="difficulty-btn" onclick="cycleDifficulty()">DIFF: MEDIO</div>
+
+<div id="status">CORRI MARIA!</div>
+
+<div id="enemy-hud">
+    <div id="enemy-label">
+        <span>BADANTE</span>
+        <span id="enemy-hp-text">100 / 100</span>
+    </div>
+    <div id="enemy-bar-bg">
+        <div id="enemy-bar-fill"></div>
+    </div>
+</div>
+
+<div id="points-hud"></div>
+
+<div id="teleport-banner">
+    <div id="teleport-title">⚠️ SEI STATA SOTTOPOSTA A TSO!</div>
+    <div id="teleport-desc">Fuga verso la città, prendi il taxi!</div>
+</div>
+
+<div id="victory-screen">
+    <div id="victory-title">🏆 BRAVISSIMA MARIA!</div>
+    <div id="victory-desc">Hai eliminato la badante e vinto la partita! Vittoria finale completata con successo!</div>
+    <button id="restart-btn" onclick="restartGame()">GIOCA ANCORA, MARIA!</button>
+</div>
+
+
+<div id="controls">
+
+    <div
+        class="button"
+        id="left">
+        ←
+    </div>
+
+    <div
+        class="button"
+        id="attack">
+        COLPISCI
+    </div>
+
+    <div
+        class="button"
+        id="right">
+        →
+    </div>
+
+</div>
+
+
+<script>
+
+
+/* =====================================================
+   CANVAS
+===================================================== */
+
+const canvas =
+    document.getElementById("game");
+
+const ctx =
+    canvas.getContext("2d");
+
+ctx.imageSmoothingEnabled = false;
+
+
+let W = 0;
+let H = 0;
+let DPR = 1;
+
+
+function resize() {
+
+    DPR =
+        Math.min(
+            window.devicePixelRatio || 1,
+            2
+        );
+
+    W = window.innerWidth;
+    H = window.innerHeight;
+
+    canvas.width =
+        W * DPR;
+
+    canvas.height =
+        H * DPR;
+
+    canvas.style.width =
+        W + "px";
+
+    canvas.style.height =
+        H + "px";
+
+    ctx.setTransform(
+        DPR,
+        0,
+        0,
+        DPR,
+        0,
+        0
+    );
+
+}
+
+
+window.addEventListener(
+    "resize",
+    resize
+);
+
+resize();
+
+
+/* =====================================================
+   CONFIGURAZIONE
+===================================================== */
+
+const HORIZON = 0.40;
+
+
+/*
+   AVANZAMENTO
+*/
+
+const BASE_FORWARD_SPEED = 0.00045;
+let forwardSpeed = BASE_FORWARD_SPEED;
+
+
+/*
+   MOVIMENTO LATERALE
+*/
+
+const BASE_SIDE_SPEED = 0.0018;
+let currentSteerVelocity = 0;
+
+
+/*
+   CELLE DEL MONDO
+*/
+
+const CELL_SIZE = 0.13;
+
+const SIDE_CELLS = 18;
+
+const DEPTH_CELLS = 28;
+
+
+/* =====================================================
+   PROSPETTIVA DEGLI ELEMENTI LONTANI
+===================================================== */
+
+
+/*
+   Lunghezza focale della proiezione.
+
+   Non controlla la distanza tra gli alberi.
+
+   Controlla solamente la prospettiva
+   della loro posizione sullo schermo.
+*/
+
+const FOCAL_LENGTH = 3.04;
+
+
+/*
+   PROFONDITÀ DEGLI ALBERI
+   =======================
+
+   Prima il valore effettivo era equivalente
+   a circa 8.
+
+   Ora usiamo 24.
+
+   Quindi lo spostamento laterale apparente
+   è circa un terzo.
+
+   Gli alberi sembrano quindi molto più lontani.
+*/
+
+const TREE_DEPTH = 24;
+
+
+/*
+   Profondità alla quale definiamo
+   la dimensione originale dell'albero.
+
+   Serve per compensare la dimensione
+   quando aumentiamo TREE_DEPTH.
+
+   In questo modo l'albero diventa
+   più lontano dal punto di vista del
+   movimento, ma non diventa improvvisamente
+   tre volte più piccolo.
+*/
+
+const TREE_REFERENCE_DEPTH = 8;
+
+
+/* =====================================================
+   INPUT & STATO GIOCO
+===================================================== */
+
+let isVictory = false;
+
+let leftPressed = false;
+
+let rightPressed = false;
+
+let isAttacking = false;
+let attackTime = 0;
+let playerWalkCycle = 0;
+let attackHitDone = false;
+
+// Cooldown dell'ascia
+const BASE_AXE_COOLDOWN = 650;
+let axeCooldownTimer = 0;
+let currentAxeCooldown = BASE_AXE_COOLDOWN;
+
+// Punti raccolti e modificatori
+let collectedPoints = 0;
+const MAX_POINTS = 5;
+let pointDecayTimer = 0;
+const POINT_DECAY_DURATION = 7500;
+
+function getAxeDuration() {
+    return Math.round(260 * (1 + collectedPoints * 0.35));
+}
+
+function getAxeCooldownDuration() {
+    return Math.round(BASE_AXE_COOLDOWN * (1 + collectedPoints * 0.45));
+}
+
+function triggerAttack() {
+
+    if (isAttacking || axeCooldownTimer > 0) return;
+
+    isAttacking = true;
+    attackTime = 0;
+    attackHitDone = false;
+    currentAxeCooldown = getAxeCooldownDuration();
+    axeCooldownTimer = currentAxeCooldown;
+
+}
+
+
+/* =====================================================
+   TASTIERA
+===================================================== */
+
+window.addEventListener(
+    "keydown",
+    function(e) {
+
+        if (
+            e.code === "ArrowLeft" ||
+            e.code === "ArrowRight" ||
+            e.code === "Space"
+        ) {
+
+            e.preventDefault();
+
+        }
+
+
+        if (
+            e.code === "Space"
+        ) {
+
+            triggerAttack();
+
+            const attackBtn = document.getElementById("attack");
+            if (attackBtn) attackBtn.classList.add("active");
+
+        }
+
+
+        if (
+            e.code === "ArrowLeft"
+        ) {
+
+            leftPressed = true;
+
+        }
+
+
+        if (
+            e.code === "ArrowRight"
+        ) {
+
+            rightPressed = true;
+
+        }
+
+    }
+);
+
+
+window.addEventListener(
+    "keyup",
+    function(e) {
+
+        if (
+            e.code === "Space"
+        ) {
+
+            const attackBtn = document.getElementById("attack");
+            if (attackBtn) attackBtn.classList.remove("active");
+
+        }
+
+
+        if (
+            e.code === "ArrowLeft"
+        ) {
+
+            leftPressed = false;
+
+        }
+
+
+        if (
+            e.code === "ArrowRight"
+        ) {
+
+            rightPressed = false;
+
+        }
+
+    }
+);
+
+
+window.addEventListener(
+    "blur",
+    function() {
+
+        leftPressed = false;
+
+        rightPressed = false;
+
+    }
+);
+
+
+/* =====================================================
+   TOUCH
+===================================================== */
+
+function setupButton(
+    element,
+    setter
+) {
+
+    function start(e) {
+
+        e.preventDefault();
+
+        setter(true);
+
+        element.classList.add(
+            "active"
+        );
+
+    }
+
+
+    function stop(e) {
+
+        e.preventDefault();
+
+        setter(false);
+
+        element.classList.remove(
+            "active"
+        );
+
+    }
+
+
+    element.addEventListener(
+        "touchstart",
+        start,
+        {
+            passive: false
+        }
+    );
+
+
+    element.addEventListener(
+        "touchend",
+        stop,
+        {
+            passive: false
+        }
+    );
+
+
+    element.addEventListener(
+        "touchcancel",
+        stop,
+        {
+            passive: false
+        }
+    );
+
+
+    element.addEventListener(
+        "mousedown",
+        start
+    );
+
+
+    window.addEventListener(
+        "mouseup",
+        stop
+    );
+
+}
+
+
+setupButton(
+    document.getElementById(
+        "attack"
+    ),
+    value => {
+        if (value) {
+            triggerAttack();
+        }
+    }
+);
+
+
+setupButton(
+    document.getElementById(
+        "left"
+    ),
+    value => {
+        leftPressed =
+            value;
+    }
+);
+
+
+setupButton(
+    document.getElementById(
+        "right"
+    ),
+    value => {
+        rightPressed =
+            value;
+    }
+);
+
+
+/* =====================================================
+   POSIZIONE DELLA TELECAMERA
+===================================================== */
+
+let cameraZ = 0;
+
+let cameraX = 0;
+
+
+/* =====================================================
+   RANDOM DETERMINISTICO
+===================================================== */
+
+function hash(
+    x,
+    z,
+    n = 0
+) {
+
+    let h =
+        x * 374761393 +
+        z * 668265263 +
+        n * 1442695041;
+
+
+    h =
+        (h ^ (h >>> 13)) *
+        1274126177;
+
+
+    h =
+        h ^ (h >>> 16);
+
+
+    h >>>= 0;
+
+
+    return (
+        h /
+        4294967295
+    );
+
+}
+
+
+/* =====================================================
+   SKY
+===================================================== */
+
+const clouds = [];
+
+
+for (
+    let i = 0;
+    i < 10;
+    i++
+) {
+
+    clouds.push({
+
+        x:
+            Math.random() *
+            1.2 -
+            0.1,
+
+        y:
+            0.07 +
+            Math.random() *
+            0.20,
+
+        size:
+            0.06 +
+            Math.random() *
+            0.10,
+
+        speed:
+            0.000006 +
+            Math.random() *
+            0.000008
+
+    });
+
+}
+
+
+function drawSky(dt) {
+
+    ctx.fillStyle =
+        "#78c7f3";
+
+
+    ctx.fillRect(
+        0,
+        0,
+        W,
+        H
+    );
+
+
+    for (
+        const cloud of clouds
+    ) {
+
+        cloud.x -=
+            cloud.speed *
+            dt;
+
+
+        if (
+            cloud.x < -0.25
+        ) {
+
+            cloud.x = 1.05;
+
+            cloud.y =
+                0.07 +
+                Math.random() *
+                0.20;
+
+        }
+
+
+        drawCloud(
+            cloud
+        );
+
+    }
+
+}
+
+
+/* =====================================================
+   NUVOLE PIXEL
+===================================================== */
+
+function drawCloud(
+    cloud
+) {
+
+    const x =
+        cloud.x * W;
+
+    const y =
+        cloud.y * H;
+
+    const s =
+        cloud.size * W;
+
+
+    ctx.fillStyle =
+        "#ffffff";
+
+
+    ctx.fillRect(
+        x,
+        y + s * 0.25,
+        s * 1.8,
+        s * 0.45
+    );
+
+
+    ctx.fillRect(
+        x + s * 0.25,
+        y,
+        s * 0.65,
+        s * 0.55
+    );
+
+
+    ctx.fillRect(
+        x + s * 0.8,
+        y - s * 0.08,
+        s * 0.55,
+        s * 0.63
+    );
+
+
+    ctx.fillRect(
+        x + s * 1.35,
+        y + s * 0.15,
+        s * 0.45,
+        s * 0.55
+    );
+
+}
+
+
+/* =====================================================
+   ALBERI
+===================================================== */
+
+
+/*
+   QUI STA LA MODIFICA IMPORTANTE.
+
+   Gli alberi sono ancora distanziati ogni 0.25
+   come nella versione precedente.
+
+   Non vengono quindi avvicinati tra loro.
+
+   La loro posizione sullo schermo viene invece
+   calcolata dividendo lo spostamento laterale
+   per TREE_DEPTH.
+
+   TREE_DEPTH = 24
+
+   quindi:
+
+       più lontani
+       =
+       meno movimento laterale
+*/
+
+function drawTrees() {
+  const TREE_SPACING = 0.55;
+  const TREE_Z = 18.0;
+  const TREE_FOV = 1.8;
+
+  // Gli alberi coprono una grande fascia laterale del mondo.
+  const first = Math.floor(cameraX / TREE_SPACING) - 18;
+  const last = first + 37;
+
+  for (let i = first; i <= last; i++) {
+    const worldX = i * TREE_SPACING;
+
+    const r1 = hash(i, 999, 1);
+    const r2 = hash(i, 999, 2);
+    const r3 = hash(i, 999, 3);
+
+    // Distribuzione irregolare, ma non troppo fitta
+    if (r1 < 0.48) continue;
+
+    const relativeX = worldX - cameraX;
+
+    // Proiezione prospettica reale:
+    // più TREE_Z è grande, meno l'albero si sposta
+    // quando cameraX cambia.
+    const perspective = TREE_FOV / TREE_Z;
+
+    const screenX =
+      W / 2 +
+      relativeX * perspective * W;
+
+    // Dimensione coerente sia su monitor orizzontali che verticali
+    const treeRef = Math.min(H, W * 1.5);
+    const treeHeight =
+      treeRef * (0.045 + r2 * 0.035);
+
+    const treeWidth =
+      treeHeight * (0.55 + r3 * 0.25);
+
+    const groundY = HORIZON * H + H * 0.012;
+
+    // Alberi completamente fuori dallo schermo
+    if (
+      screenX < -treeWidth * 3 ||
+      screenX > W + treeWidth * 3
+    ) {
+      continue;
+    }
+
+    // Tronco
+ctx.fillStyle = "#513b28";
+
+const canopyBottom = groundY - treeHeight * 0.34;
+
+ctx.fillRect(
+  screenX - treeWidth * 0.10,
+  canopyBottom,
+  treeWidth * 0.20,
+  groundY - canopyBottom
+);
+
+// Chioma
+ctx.fillStyle = "#245b32";
+
+ctx.fillRect(
+  screenX - treeWidth * 0.42,
+  groundY - treeHeight * 0.72,
+  treeWidth * 0.84,
+  treeHeight * 0.38
+);
+
+ctx.fillRect(
+  screenX - treeWidth * 0.28,
+  groundY - treeHeight * 0.88,
+  treeWidth * 0.56,
+  treeHeight * 0.25
+);
+
+ctx.fillRect(
+  screenX - treeWidth * 0.16,
+  groundY - treeHeight * 0.98,
+  treeWidth * 0.32,
+  treeHeight * 0.18
+);
+
+    // Piccolo dettaglio più scuro
+    ctx.fillStyle = "#1c4929";
+
+    ctx.fillRect(
+      screenX - treeWidth * 0.34,
+      groundY - treeHeight * 0.58,
+      treeWidth * 0.18,
+      treeHeight * 0.13
+    );
+
+    ctx.fillRect(
+      screenX + treeWidth * 0.18,
+      groundY - treeHeight * 0.70,
+      treeWidth * 0.16,
+      treeHeight * 0.12
+    );
+  }
+}
+
+/* =====================================================
+   PRATO BASE
+===================================================== */
+
+function drawMeadow() {
+
+    const horizonY =
+        H * HORIZON;
+
+
+    ctx.fillStyle =
+        "#4f9a35";
+
+
+    ctx.fillRect(
+
+        0,
+        horizonY,
+        W,
+        H - horizonY
+
+    );
+
+
+    drawBands();
+
+    drawInfiniteGrass();
+
+}
+
+
+/* =====================================================
+   FASCE INFINITE
+===================================================== */
+
+function drawBands() {
+
+    const horizonY =
+        H * HORIZON;
+
+
+    const start =
+        Math.floor(
+            cameraZ
+        ) - 1;
+
+
+    const end =
+        start +
+        DEPTH_CELLS;
+
+
+    for (
+        let worldZ = start;
+        worldZ < end;
+        worldZ++
+    ) {
+
+        const relativeZ =
+            worldZ -
+            cameraZ;
+
+
+        if (
+            relativeZ <= 0.02 ||
+            relativeZ > 4
+        ) {
+
+            continue;
+
+        }
+
+
+        const perspective =
+            1 /
+            relativeZ;
+
+
+        const p =
+            Math.min(
+                1,
+                perspective /
+                12
+            );
+
+
+        const y =
+            horizonY +
+            p *
+            (H - horizonY);
+
+
+        const nextZ =
+            relativeZ +
+            0.85;
+
+
+        const nextPerspective =
+            Math.min(
+                1,
+                (1 / nextZ) /
+                12
+            );
+
+
+        const nextY =
+            horizonY +
+            nextPerspective *
+            (H - horizonY);
+
+
+        const height =
+            Math.max(
+                2,
+                nextY - y
+            );
+
+
+        if (
+            Math.abs(worldZ) %
+            2 === 0
+        ) {
+
+            ctx.fillStyle =
+                "#478d31";
+
+        }
+
+        else {
+
+            ctx.fillStyle =
+                "#559f37";
+
+        }
+
+
+        const side =
+            cameraX *
+            p *
+            W *
+            0.025;
+
+
+        ctx.fillRect(
+
+            -W + side,
+
+            y,
+
+            W * 2,
+
+            height + 2
+
+        );
+
+    }
+
+}
+
+
+/* =====================================================
+   ERBA PROCEDURALE INFINITA
+===================================================== */
+
+function drawInfiniteGrass() {
+
+    const horizonY =
+        H * HORIZON;
+
+
+    const cameraCellX =
+        Math.floor(
+            cameraX /
+            CELL_SIZE
+        );
+
+
+    const cameraCellZ =
+        Math.floor(
+            cameraZ /
+            CELL_SIZE
+        );
+
+
+    for (
+        let cz =
+            cameraCellZ - 2;
+
+        cz <
+            cameraCellZ +
+            DEPTH_CELLS;
+
+        cz++
+    ) {
+
+        const worldZ =
+            cz *
+            CELL_SIZE;
+
+
+        const relativeZ =
+            worldZ -
+            cameraZ;
+
+
+        if (
+            relativeZ <= 0.035 ||
+            relativeZ > 3.5
+        ) {
+
+            continue;
+
+        }
+
+
+        const perspective =
+            1 /
+            relativeZ;
+
+
+        const p =
+            Math.min(
+                1,
+                Math.pow(
+                    perspective /
+                    10,
+                    1.15
+                )
+            );
+
+
+        const screenY =
+            horizonY +
+            p *
+            (H - horizonY);
+
+
+        const visibleWidth =
+            1.45 *
+            relativeZ;
+
+
+        const minCellX =
+            Math.floor(
+                (
+                    cameraX -
+                    visibleWidth
+                ) /
+                CELL_SIZE
+            ) - 2;
+
+
+        const maxCellX =
+            Math.ceil(
+                (
+                    cameraX +
+                    visibleWidth
+                ) /
+                CELL_SIZE
+            ) + 2;
+
+
+        const actualMin =
+            Math.max(
+                minCellX,
+                cameraCellX -
+                SIDE_CELLS
+            );
+
+
+        const actualMax =
+            Math.min(
+                maxCellX,
+                cameraCellX +
+                SIDE_CELLS
+            );
+
+
+        for (
+            let cx = actualMin;
+            cx <= actualMax;
+            cx++
+        ) {
+
+            const density =
+                hash(
+                    cx,
+                    cz,
+                    10
+                );
+
+
+            if (
+                density < 0.30
+            ) {
+
+                continue;
+
+            }
+
+
+            const count =
+                1 +
+                Math.floor(
+                    hash(
+                        cx,
+                        cz,
+                        20
+                    ) * 3
+                );
+
+
+            for (
+                let n = 0;
+                n < count;
+                n++
+            ) {
+
+                const rx =
+                    hash(
+                        cx,
+                        cz,
+                        100 +
+                        n * 4
+                    );
+
+
+                const rz =
+                    hash(
+                        cx,
+                        cz,
+                        101 +
+                        n * 4
+                    );
+
+
+                const worldX =
+                    cx *
+                    CELL_SIZE +
+                    rx *
+                    CELL_SIZE;
+
+
+                const actualWorldZ =
+                    worldZ +
+                    rz *
+                    CELL_SIZE;
+
+
+                const z =
+                    actualWorldZ -
+                    cameraZ;
+
+
+                if (
+                    z <= 0.035
+                ) {
+
+                    continue;
+
+                }
+
+
+                const perspective2 =
+                    1 /
+                    z;
+
+
+                const zoom =
+                    Math.pow(
+                        perspective2 /
+                        8,
+                        1.35
+                    );
+
+
+                const p2 =
+                    Math.min(
+                        1.35,
+                        zoom
+                    );
+
+
+                const screenY2 =
+                    horizonY +
+                    p2 *
+                    (H - horizonY);
+
+
+                const relativeX =
+                    worldX -
+                    cameraX;
+
+
+                const projScale =
+                    Math.max(
+                        W * 0.13,
+                        H * 0.085
+                    );
+
+                const screenX =
+                    W / 2 +
+                    (
+                        relativeX /
+                        z
+                    ) *
+                    projScale;
+
+
+                const baseSize =
+                    1.0 +
+                    Math.pow(
+                        perspective2,
+                        1.55
+                    ) *
+                    1.8;
+
+
+                const randomSize =
+                    0.65 +
+                    hash(
+                        cx,
+                        cz,
+                        200 + n
+                    ) *
+                    0.75;
+
+
+                const size =
+                    baseSize *
+                    randomSize;
+
+
+                if (
+                    screenY2 >
+                    H * 1.03
+                ) {
+
+                    continue;
+
+                }
+
+
+                if (
+                    screenX < -100 ||
+                    screenX > W + 100
+                ) {
+
+                    continue;
+
+                }
+
+
+                const wind =
+                    Math.sin(
+                        performance.now() *
+                        0.002 +
+                        cx * 1.7 +
+                        cz * 0.8 +
+                        n
+                    ) *
+                    size *
+                    0.15;
+
+
+                const colorRandom =
+                    hash(
+                        cx,
+                        cz,
+                        300 + n
+                    );
+
+
+                if (
+                    colorRandom < 0.5
+                ) {
+
+                    ctx.fillStyle =
+                        "#65ad3e";
+
+                }
+
+                else {
+
+                    ctx.fillStyle =
+                        "#72b948";
+
+                }
+
+
+                /*
+                   CIUFFO PRINCIPALE
+                */
+
+                ctx.fillRect(
+
+                    Math.round(
+                        screenX
+                    ),
+
+                    Math.round(
+                        screenY2 -
+                        size
+                    ),
+
+                    Math.max(
+                        1,
+                        Math.round(
+                            size *
+                            0.35
+                        )
+                    ),
+
+                    Math.max(
+                        1,
+                        Math.round(
+                            size
+                        )
+                    )
+
+                );
+
+
+                /*
+                   CIUFFO CENTRALE
+                */
+
+                ctx.fillRect(
+
+                    Math.round(
+                        screenX +
+                        wind
+                    ),
+
+                    Math.round(
+                        screenY2 -
+                        size *
+                        1.35
+                    ),
+
+                    Math.max(
+                        1,
+                        Math.round(
+                            size *
+                            0.28
+                        )
+                    ),
+
+                    Math.max(
+                        1,
+                        Math.round(
+                            size *
+                            0.75
+                        )
+                    )
+
+                );
+
+
+                /*
+                   CIUFFO LATERALE
+                */
+
+                ctx.fillRect(
+
+                    Math.round(
+                        screenX +
+                        size *
+                        0.55
+                    ),
+
+                    Math.round(
+                        screenY2 -
+                        size *
+                        0.80
+                    ),
+
+                    Math.max(
+                        1,
+                        Math.round(
+                            size *
+                            0.25
+                        )
+                    ),
+
+                    Math.max(
+                        1,
+                        Math.round(
+                            size *
+                            0.80
+                        )
+                    )
+
+                );
+
+            }
+
+        }
+
+    }
+
+}
+
+
+/* =====================================================
+   STATUS
+===================================================== */
+
+function updateStatus() {
+
+    const status =
+        document.getElementById(
+            "status"
+        );
+
+    if (!status) return;
+
+    if (
+        isVictory
+    ) {
+
+        status.textContent =
+            "🏆 BRAVA MARIA! VITTORIA!";
+
+    }
+
+    else if (
+        isAttacking
+    ) {
+
+        status.textContent =
+            "⚔ COLPISCI MARIA!";
+
+    }
+
+    else if (
+        leftPressed
+    ) {
+
+        status.textContent =
+            "← SINISTRA";
+
+    }
+
+    else if (
+        rightPressed
+    ) {
+
+        status.textContent =
+            "DESTRA →";
+
+    }
+
+    else {
+
+        status.textContent =
+            "CORRI MARIA!";
+
+    }
+
+}
+
+
+/* =====================================================
+   DIFFICOLTÀ VARIABILE
+===================================================== */
+
+const DIFFICULTY_LEVELS = [
+    {
+        name: "FACILE",
+        color: "#4caf50",
+        regenRate: 0.35,     // Rigenerazione fortemente ridotta (0.35 HP/sec)
+        maxObstacles: 1,
+        obstacleInterval: 5500
+    },
+    {
+        name: "MEDIO",
+        color: "#ff9800",
+        regenRate: 0.75,     // Rigenerazione lenta e bilanciata (0.75 HP/sec)
+        maxObstacles: 2,
+        obstacleInterval: 4200
+    },
+    {
+        name: "DIFFICILE",
+        color: "#f44336",
+        regenRate: 1.40,     // Rigenerazione moderata (1.40 HP/sec)
+        maxObstacles: 4,
+        obstacleInterval: 2600
+    }
+];
+
+let currentDifficultyIndex = 1; // Default MEDIO
+
+try {
+    const savedDiff = sessionStorage.getItem("game_difficulty");
+    if (savedDiff !== null && !isNaN(parseInt(savedDiff))) {
+        currentDifficultyIndex = parseInt(savedDiff) % DIFFICULTY_LEVELS.length;
+    }
+} catch(e) {}
+
+function getDifficulty() {
+    return DIFFICULTY_LEVELS[currentDifficultyIndex];
+}
+
+function updateDifficultyHud() {
+    const btn = document.getElementById("difficulty-btn");
+    if (!btn) return;
+    const diff = getDifficulty();
+    btn.innerHTML = `<span style="opacity:0.75">DIFF:</span> <span style="color:${diff.color}">${diff.name}</span>`;
+}
+
+function cycleDifficulty() {
+    currentDifficultyIndex = (currentDifficultyIndex + 1) % DIFFICULTY_LEVELS.length;
+    try {
+        sessionStorage.setItem("game_difficulty", currentDifficultyIndex);
+    } catch(e) {}
+    updateDifficultyHud();
+}
+
+updateDifficultyHud();
+
+
+/* =====================================================
+   NEMICO (LOGICA E RENDERING PARALLASSE)
+===================================================== */
+
+const enemyFrontImg = new Image();
+enemyFrontImg.src = "Nemico Front.svg";
+
+const enemyRearImg = new Image();
+enemyRearImg.src = "Nemico Rear.svg";
+
+const ENEMY_MAX_HP = 100;
+const AXE_DAMAGE = 20;
+
+function createEnemy() {
+    return {
+        x: 0,
+        z: 0.9,
+        vx: 0,
+        vz: -0.00035,
+        changeTimer: 2500,
+        isMoving: true,
+        facing: "front",
+        walkTime: 0,
+        hp: ENEMY_MAX_HP,
+        hitFlash: 0,
+        isFleeing: false,
+        fleeTimer: 0
+    };
+}
+
+const enemy = createEnemy();
+
+function triggerVictory() {
+    isVictory = true;
+    try {
+        sessionStorage.removeItem("enemy_hp");
+    } catch(e) {}
+    const victoryScreen = document.getElementById("victory-screen");
+    if (victoryScreen) victoryScreen.classList.add("visible");
+}
+
+function restartGame() {
+    isVictory = false;
+    try {
+        sessionStorage.removeItem("enemy_hp");
+    } catch(e) {}
+    const victoryScreen = document.getElementById("victory-screen");
+    if (victoryScreen) victoryScreen.classList.remove("visible");
+
+    enemy.hp = ENEMY_MAX_HP;
+    enemy.x = cameraX;
+    enemy.z = cameraZ + 1.2;
+    enemy.vx = 0;
+    enemy.vz = -0.00035;
+    enemy.isFleeing = false;
+    enemy.fleeTimer = 0;
+    enemy.facing = "front";
+    enemy.isMoving = true;
+    updateEnemyHud();
+
+    collectedPoints = 0;
+    updatePointsHud();
+    currentSteerVelocity = 0;
+}
+
+function updateEnemyHud() {
+    const fill = document.getElementById("enemy-bar-fill");
+    const text = document.getElementById("enemy-hp-text");
+    if (fill) {
+        const pct = Math.max(0, Math.min(100, (enemy.hp / ENEMY_MAX_HP) * 100));
+        fill.style.width = pct + "%";
+    }
+    if (text) {
+        text.textContent = Math.round(enemy.hp) + " / " + ENEMY_MAX_HP;
+    }
+}
+
+// Ripristina la vita del nemico e mostra feedback di ritorno dal taxi
+try {
+    const savedHp = sessionStorage.getItem("enemy_hp");
+    if (savedHp !== null && !isNaN(parseFloat(savedHp))) {
+        enemy.hp = Math.max(10, Math.min(ENEMY_MAX_HP, parseFloat(savedHp)));
+    }
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("returned") === "1") {
+        setTimeout(() => {
+            const banner = document.getElementById("teleport-banner");
+            if (banner) {
+                const title = banner.querySelector("#teleport-title");
+                const desc = banner.querySelector("#teleport-desc");
+                if (title) title.textContent = "🚕 BENTORNATA MARIA!";
+                if (desc) desc.textContent = "Sei scesa dal taxi! Ora finisci la badante per vincere il gioco!";
+                banner.classList.add("visible");
+                setTimeout(() => banner.classList.remove("visible"), 3000);
+            }
+        }, 200);
+    }
+} catch(e) {}
+
+updateEnemyHud();
+
+function isEnemyInAttackRange() {
+    const relZ = enemy.z - cameraZ;
+    const relX = enemy.x - cameraX;
+    // Raggio d'azione più corto, allineato al mirino e alla profondità falso 3D
+    const inDepth = relZ >= 0.10 && relZ <= 0.38;
+    const inWidth = Math.abs(relX) <= 0.22;
+    return inDepth && inWidth;
+}
+
+function playDingSound() {
+    try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const actx = new AudioContext();
+        const now = actx.currentTime;
+
+        // Ding cristallino (sinusoide pura alta)
+        const osc = actx.createOscillator();
+        const g = actx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(1320, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.25);
+        g.gain.setValueAtTime(0.30, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+        osc.connect(g);
+        g.connect(actx.destination);
+        osc.start(now);
+        osc.stop(now + 0.38);
+
+        // Armonica superiore per brillantezza
+        const osc2 = actx.createOscillator();
+        const g2 = actx.createGain();
+        osc2.type = "sine";
+        osc2.frequency.setValueAtTime(2640, now);
+        osc2.frequency.exponentialRampToValueAtTime(1760, now + 0.18);
+        g2.gain.setValueAtTime(0.12, now);
+        g2.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+        osc2.connect(g2);
+        g2.connect(actx.destination);
+        osc2.start(now);
+        osc2.stop(now + 0.25);
+    } catch(e) {}
+}
+
+function playAxeImpactSound() {
+    try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const actx = new AudioContext();
+        const now = actx.currentTime;
+
+        // Colpo sordo basso (impatto carne/corpo)
+        const osc1 = actx.createOscillator();
+        const g1 = actx.createGain();
+        osc1.type = "sine";
+        osc1.frequency.setValueAtTime(120, now);
+        osc1.frequency.exponentialRampToValueAtTime(45, now + 0.18);
+        g1.gain.setValueAtTime(0.7, now);
+        g1.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+        osc1.connect(g1);
+        g1.connect(actx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.25);
+
+        // Rumore percussivo breve (metallo dell'ascia)
+        const bufLen = actx.sampleRate * 0.12;
+        const buf = actx.createBuffer(1, bufLen, actx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < bufLen; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (actx.sampleRate * 0.025));
+        }
+        const noise = actx.createBufferSource();
+        noise.buffer = buf;
+        const filt = actx.createBiquadFilter();
+        filt.type = "bandpass";
+        filt.frequency.value = 900;
+        filt.Q.value = 1.2;
+        const g2 = actx.createGain();
+        g2.gain.setValueAtTime(0.45, now);
+        g2.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        noise.connect(filt);
+        filt.connect(g2);
+        g2.connect(actx.destination);
+        noise.start(now);
+    } catch(e) {}
+}
+
+function checkAxeHit() {
+    if (isVictory) return false;
+
+    if (isEnemyInAttackRange()) {
+        enemy.hp = Math.max(0, enemy.hp - AXE_DAMAGE);
+        enemy.hitFlash = 220;
+        updateEnemyHud();
+        playAxeImpactSound();
+
+        if (enemy.hp <= 0) {
+            triggerVictory();
+        } else {
+            // Il nemico scappa per un po' allontanandosi verso l'orizzonte
+            enemy.isFleeing = true;
+            enemy.fleeTimer = 2400;
+            enemy.vz = 0.00085;
+            enemy.vx = (enemy.x >= cameraX ? 1 : -1) * 0.00065;
+            enemy.isMoving = true;
+            enemy.facing = "rear";
+        }
+        return true;
+    }
+    return false;
+}
+
+function chooseEnemyDirection(e) {
+    if (e.isFleeing) return;
+
+    e.changeTimer = 2000 + Math.random() * 3000;
+    if (Math.random() < 0.2) {
+        e.isMoving = false;
+        e.vx = 0;
+        e.vz = 0;
+        return;
+    }
+    e.isMoving = true;
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 0.0003 + Math.random() * 0.00025;
+    e.vx = Math.cos(angle) * speed;
+    e.vz = Math.sin(angle) * speed;
+}
+
+function updateEnemyFacing(e) {
+    if (e.vz < -0.00005) {
+        e.facing = "front";
+    } else if (e.vz > 0.00005) {
+        e.facing = "rear";
+    }
+}
+
+function constrainEnemyBounds(e) {
+    const relZ = e.z - cameraZ;
+    const relX = e.x - cameraX;
+
+    if (relZ < 0.22) {
+        e.vz = Math.abs(e.vz) || 0.00035;
+        e.isMoving = true;
+    } else if (relZ > 2.2) {
+        if (e.isFleeing) {
+            e.z = cameraZ + 2.0;
+        } else {
+            e.vz = -Math.abs(e.vz) || -0.00035;
+            e.isMoving = true;
+        }
+    }
+
+    if (relX > 1.5) {
+        e.vx = -Math.abs(e.vx) || -0.0003;
+    } else if (relX < -1.5) {
+        e.vx = Math.abs(e.vx) || 0.0003;
+    }
+
+    if (e.z < cameraZ + 0.12) {
+        e.z = cameraZ + 1.2 + Math.random() * 0.6;
+        e.x = cameraX + (Math.random() - 0.5) * 1.0;
+        e.vz = -0.00035;
+        e.isMoving = true;
+        e.isFleeing = false;
+    }
+}
+
+function updateEnemy(dt) {
+    if (isVictory) {
+        if (enemy.hitFlash > 0) {
+            enemy.hitFlash -= dt;
+        }
+        return;
+    }
+
+    if (enemy.isFleeing) {
+        enemy.fleeTimer -= dt;
+        if (enemy.fleeTimer <= 0) {
+            enemy.isFleeing = false;
+            chooseEnemyDirection(enemy);
+        } else {
+            enemy.vz = 0.00085;
+            enemy.vx = (enemy.x >= cameraX ? 1 : -1) * 0.00065;
+            enemy.isMoving = true;
+            enemy.facing = "rear";
+        }
+    } else {
+        enemy.changeTimer -= dt;
+        if (enemy.changeTimer <= 0) {
+            chooseEnemyDirection(enemy);
+        }
+    }
+
+    constrainEnemyBounds(enemy);
+    updateEnemyFacing(enemy);
+
+    if (enemy.isMoving) {
+        enemy.x += enemy.vx * dt;
+        enemy.z += enemy.vz * dt;
+        enemy.walkTime += dt * (enemy.isFleeing ? 0.012 : 0.006);
+    }
+
+    if (enemy.hp > 0 && enemy.hp < ENEMY_MAX_HP) {
+        const regenRate = getDifficulty().regenRate;
+        enemy.hp = Math.min(ENEMY_MAX_HP, enemy.hp + regenRate * (dt / 1000));
+        updateEnemyHud();
+    }
+
+    if (enemy.hitFlash > 0) {
+        enemy.hitFlash -= dt;
+    }
+}
+
+function projectToScreen(worldX, worldZ) {
+    const relZ = worldZ - cameraZ;
+    if (relZ <= 0.035 || relZ > 3.5) return null;
+
+    const horizonY = H * HORIZON;
+    const perspective = 1 / relZ;
+    const zoom = Math.pow(perspective / 8, 1.35);
+    const p = Math.min(1.35, zoom);
+    const screenY = horizonY + p * (H - horizonY);
+
+    const relX = worldX - cameraX;
+    const projScale = Math.max(W * 0.13, H * 0.085);
+    const screenX = W / 2 + (relX / relZ) * projScale;
+
+    return { screenX, screenY, p };
+}
+
+function drawEnemyShadow(screenX, screenY, width) {
+    ctx.save();
+    ctx.fillStyle = "rgba(0, 0, 0, 0.28)";
+    ctx.beginPath();
+    ctx.ellipse(
+        screenX,
+        screenY - 2,
+        width * 0.42,
+        width * 0.15,
+        0,
+        0,
+        Math.PI * 2
+    );
+    ctx.fill();
+    ctx.restore();
+}
+
+function drawEnemySprite(img, screenX, screenY, width, height, bobY) {
+    const drawX = screenX - width / 2;
+    const drawY = screenY - height - bobY;
+    ctx.drawImage(img, drawX, drawY, width, height);
+}
+
+function drawEnemy() {
+    if (enemy.hp <= 0) return;
+
+    const proj = projectToScreen(enemy.x, enemy.z);
+    if (!proj) return;
+
+    const img = enemy.facing === "rear" ? enemyRearImg : enemyFrontImg;
+    if (!img.complete || img.naturalWidth === 0) return;
+
+    const aspect = img.naturalWidth / img.naturalHeight;
+    const refDim = Math.min(H, W * 1.5);
+    const enemyHeight = refDim * 0.32 * Math.pow(proj.p, 0.7);
+    const enemyWidth = enemyHeight * aspect;
+
+    if (proj.screenX < -enemyWidth * 2 || proj.screenX > W + enemyWidth * 2) return;
+
+    let bobY = 0;
+    if (enemy.isMoving) {
+        bobY = Math.abs(Math.sin(enemy.walkTime * 8)) * (enemyHeight * 0.03);
+    }
+
+    drawEnemyShadow(proj.screenX, proj.screenY, enemyWidth);
+
+    if (enemy.hitFlash > 0) {
+        ctx.save();
+        ctx.filter = "brightness(1.4) sepia(1) hue-rotate(-50deg) saturate(6)";
+        drawEnemySprite(img, proj.screenX, proj.screenY, enemyWidth, enemyHeight, bobY);
+        ctx.restore();
+    } else {
+        drawEnemySprite(img, proj.screenX, proj.screenY, enemyWidth, enemyHeight, bobY);
+    }
+}
+
+
+/* =====================================================
+   ASCIA (PRIMA PERSONA & ATTACCO)
+===================================================== */
+
+const axeImg = new Image();
+axeImg.src = "Ascia.svg";
+
+function updateAxe(dt) {
+
+    if (axeCooldownTimer > 0) {
+        axeCooldownTimer = Math.max(0, axeCooldownTimer - dt);
+    }
+
+    const attackBtn = document.getElementById("attack");
+    if (attackBtn) {
+        attackBtn.style.opacity = axeCooldownTimer > 0 ? "0.5" : "1";
+    }
+
+    if (isAttacking) {
+        attackTime += dt;
+        const duration = getAxeDuration();
+        if (!attackHitDone && attackTime >= duration * 0.25) {
+            attackHitDone = true;
+            checkAxeHit();
+        }
+        if (attackTime >= duration) {
+            isAttacking = false;
+            attackTime = 0;
+        }
+    }
+
+    if (!isVictory) {
+        playerWalkCycle += dt * 0.008;
+    }
+
+}
+
+function drawAxe() {
+
+    if (!axeImg.complete || axeImg.naturalWidth === 0) return;
+
+    // Dimensioni coerenti sia su monitor verticale che orizzontale
+    const baseHeight = Math.min(H * 0.44, W * 0.65);
+    const aspect = axeImg.naturalWidth / axeImg.naturalHeight;
+    const baseWidth = baseHeight * aspect;
+
+    // Posizione base in mano a destra
+    let posX = W - baseWidth * 0.82;
+    let posY = H - baseHeight * 0.88;
+    let angle = 0.15;
+
+    // Movimento del passo durante la corsa continua, o respiro a riposo se vittoria
+    if (!isVictory) {
+        posX += Math.cos(playerWalkCycle) * (W * 0.015);
+        posY += Math.abs(Math.sin(playerWalkCycle)) * (H * 0.025);
+    } else {
+        posY += Math.sin(performance.now() * 0.002) * (H * 0.008);
+    }
+
+    // Animazione dell'attacco (fendente con durata dipendente dai punti)
+    if (isAttacking) {
+        const duration = getAxeDuration();
+        const progress = attackTime / duration;
+        if (progress < 0.35) {
+            const t = progress / 0.35;
+            angle = 0.15 - t * 0.95;
+            posX -= t * (W * 0.10);
+            posY += t * (H * 0.08);
+        } else {
+            const t = (progress - 0.35) / 0.65;
+            angle = -0.80 + t * 0.95;
+            posX -= (1 - t) * (W * 0.10);
+            posY += (1 - t) * (H * 0.08);
+        }
+    }
+
+    ctx.save();
+    const pivotX = posX + baseWidth * 0.5;
+    const pivotY = posY + baseHeight * 0.9;
+    ctx.translate(pivotX, pivotY);
+    ctx.rotate(angle);
+    ctx.drawImage(
+        axeImg,
+        -baseWidth * 0.5,
+        -baseHeight * 0.9,
+        baseWidth,
+        baseHeight
+    );
+    ctx.restore();
+
+}
+
+
+/* =====================================================
+   MIRINO A "+" E BARRETTA COOLDOWN
+===================================================== */
+
+function drawCrosshair() {
+
+    const crosshairX = W / 2;
+
+    // Calcolo posizione verticale del mirino allineata alla distanza d'attacco in falso 3D
+    const aimZoom = Math.pow((1 / 0.24) / 8, 1.35);
+    const aimGroundY = H * HORIZON + aimZoom * (H - H * HORIZON);
+    const refDim = Math.min(H, W * 1.5);
+    const enemyAimH = refDim * 0.32 * Math.pow(aimZoom, 0.7);
+    const crosshairY = aimGroundY - enemyAimH * 0.45;
+
+    const inRange = isEnemyInAttackRange();
+
+    ctx.save();
+
+    // 1. Mirino a "+"
+    const arm = 10;
+    const gap = 3;
+
+    // Ombra del mirino
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.65)";
+    ctx.beginPath();
+    ctx.moveTo(crosshairX - arm, crosshairY); ctx.lineTo(crosshairX - gap, crosshairY);
+    ctx.moveTo(crosshairX + gap, crosshairY); ctx.lineTo(crosshairX + arm, crosshairY);
+    ctx.moveTo(crosshairX, crosshairY - arm); ctx.lineTo(crosshairX, crosshairY - gap);
+    ctx.moveTo(crosshairX, crosshairY + gap); ctx.lineTo(crosshairX, crosshairY + arm);
+    ctx.stroke();
+
+    // Linee visive del mirino (rosso se nemico a portata di ascia, altrimenti bianco)
+    ctx.lineWidth = 1.6;
+    ctx.strokeStyle = inRange ? "#ff3333" : "rgba(255, 255, 255, 0.90)";
+    ctx.beginPath();
+    ctx.moveTo(crosshairX - arm, crosshairY); ctx.lineTo(crosshairX - gap, crosshairY);
+    ctx.moveTo(crosshairX + gap, crosshairY); ctx.lineTo(crosshairX + arm, crosshairY);
+    ctx.moveTo(crosshairX, crosshairY - arm); ctx.lineTo(crosshairX, crosshairY - gap);
+    ctx.moveTo(crosshairX, crosshairY + gap); ctx.lineTo(crosshairX, crosshairY + arm);
+    ctx.stroke();
+
+    // 2. Piccola barretta semitrasparente di ricarica (cooldown) in mezzo
+    const barW = 34;
+    const barH = 5;
+    const barX = crosshairX - barW / 2;
+    const barY = crosshairY + 18;
+
+    // Sfondo barretta
+    ctx.fillStyle = "rgba(0, 0, 0, 0.40)";
+    ctx.fillRect(barX, barY, barW, barH);
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(barX, barY, barW, barH);
+
+    // Barra di riempimento ricarica
+    let pct = 1;
+    if (axeCooldownTimer > 0) {
+        pct = Math.max(0, Math.min(1, 1 - (axeCooldownTimer / currentAxeCooldown)));
+        ctx.fillStyle = "rgba(255, 200, 70, 0.70)";
+    } else {
+        ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
+    }
+    ctx.fillRect(barX + 1, barY + 1, Math.max(0, (barW - 2) * pct), barH - 2);
+
+    ctx.restore();
+
+}
+
+
+/* =====================================================
+   PUNTI (SPAWN, PARALLASSE & RACCOLTA)
+===================================================== */
+
+const puntoImg = new Image();
+puntoImg.src = "Punto.svg";
+
+const puntosOnGround = [];
+let puntoSpawnTimer = 0;
+
+function updateViewBlur() {
+    // Sfocatura visuale proporzionale ai punti raccolti fino a un massimo del 50%
+    const blurFraction = (collectedPoints / MAX_POINTS) * 0.50;
+    const blurPx = blurFraction * 12; // Al 50% corrisponde a 6px di sfocatura visiva
+    if (blurPx > 0.05) {
+        canvas.style.filter = "blur(" + blurPx.toFixed(1) + "px)";
+    } else {
+        canvas.style.filter = "none";
+    }
+}
+
+function updatePointsHud() {
+
+    const hud = document.getElementById("points-hud");
+    if (hud) {
+        hud.innerHTML = "";
+        for (let i = 0; i < collectedPoints; i++) {
+            const img = document.createElement("img");
+            img.src = "Punto.svg";
+            img.className = "point-icon";
+            hud.appendChild(img);
+        }
+    }
+
+    updateViewBlur();
+
+}
+
+updatePointsHud();
+
+function spawnPunto() {
+
+    puntosOnGround.push({
+        x: cameraX + (Math.random() - 0.5) * 1.6,
+        z: cameraZ + 1.6 + Math.random() * 1.4
+    });
+
+}
+
+function updatePuntos(dt) {
+
+    // Spawn periodico sul terreno
+    puntoSpawnTimer += dt;
+    if (puntoSpawnTimer >= 3000 && puntosOnGround.length < 6) {
+        puntoSpawnTimer = 0;
+        spawnPunto();
+    }
+
+    // Consumo lento dei punti nel tempo
+    if (collectedPoints > 0) {
+        pointDecayTimer += dt;
+        if (pointDecayTimer >= POINT_DECAY_DURATION) {
+            pointDecayTimer = 0;
+            collectedPoints--;
+            updatePointsHud();
+        }
+    }
+
+    // Aumento di velocità in base ai punti raccolti
+    const speedMultiplier = 1 + collectedPoints * 0.35;
+    forwardSpeed = BASE_FORWARD_SPEED * speedMultiplier;
+
+    // Collisione con i punti: finestra del 10% della viewport
+    const projScalePunto = Math.max(W * 0.13, H * 0.085);
+    const puntoWindow = W * 0.10;
+
+    for (let i = puntosOnGround.length - 1; i >= 0; i--) {
+        const p = puntosOnGround[i];
+        const relZ = p.z - cameraZ;
+        const relX = p.x - cameraX;
+
+        // Finestra di cattura: quando il punto transita all'altezza del giocatore
+        if (relZ >= -0.05 && relZ <= 0.14) {
+            const screenX = W / 2 + (relX / 0.125) * projScalePunto;
+            const distFromCenter = Math.abs(screenX - W / 2);
+
+            if (distFromCenter <= puntoWindow / 2 + 14) {
+                if (collectedPoints < MAX_POINTS) {
+                    collectedPoints++;
+                    pointDecayTimer = 0;
+                    updatePointsHud();
+                    playDingSound();
+                }
+                puntosOnGround.splice(i, 1);
+                continue;
+            }
+        }
+
+        // Rimozione punti lasciati indietro
+        if (relZ < -0.4) {
+            puntosOnGround.splice(i, 1);
+        }
+    }
+
+}
+
+function drawPuntos() {
+
+    if (!puntoImg.complete || puntoImg.naturalWidth === 0) return;
+
+    const refDim = Math.min(H, W * 1.5);
+    const aspect = puntoImg.naturalWidth / puntoImg.naturalHeight;
+
+    for (const p of puntosOnGround) {
+        const proj = projectToScreen(p.x, p.z);
+        if (!proj) continue;
+
+        const pSize = Math.max(14, refDim * 0.09 * Math.pow(proj.p, 0.75));
+        const pWidth = pSize * aspect;
+        const pHeight = pSize;
+
+        if (proj.screenX < -pWidth || proj.screenX > W + pWidth) continue;
+
+        // Ombra sul terreno
+        ctx.save();
+        ctx.fillStyle = "rgba(0, 0, 0, 0.28)";
+        ctx.beginPath();
+        ctx.ellipse(
+            proj.screenX,
+            proj.screenY,
+            pWidth * 0.40,
+            pHeight * 0.16,
+            0,
+            0,
+            Math.PI * 2
+        );
+        ctx.fill();
+
+        // Icona Punto.svg ferma sul terreno
+        ctx.drawImage(
+            puntoImg,
+            proj.screenX - pWidth / 2,
+            proj.screenY - pHeight * 0.85,
+            pWidth,
+            pHeight
+        );
+        ctx.restore();
+    }
+
+}
+
+
+/* =====================================================
+   OSTACOLI (SPAWN, PARALLASSE & TELETRASPORTO)
+===================================================== */
+
+const ostacoloImg = new Image();
+ostacoloImg.src = "Ostacolo.svg";
+
+const obstacles = [];
+let obstacleSpawnTimer = 0;
+
+let isTeleporting = false;
+let teleportTimer = 0;
+const TELEPORT_DELAY = 1600;
+
+function spawnObstacle(targetZ) {
+
+    const z = targetZ || (cameraZ + 2.0 + Math.random() * 1.4);
+    const x = cameraX + (Math.random() - 0.5) * 1.5;
+    obstacles.push({ x, z });
+
+}
+
+spawnObstacle(cameraZ + 1.9);
+
+function playAmbulanceSiren() {
+    try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const actx = new AudioContext();
+
+        const now = actx.currentTime;
+        const osc = actx.createOscillator();
+        const gain = actx.createGain();
+
+        osc.type = "sawtooth";
+
+        // Bitonale ambulanza europea (435 Hz / 580 Hz alternata)
+        const toneDuration = 0.32;
+        const totalDuration = 2.8;
+        const tones = [580, 435];
+
+        let t = now;
+        let idx = 0;
+        while (t < now + totalDuration) {
+            osc.frequency.setValueAtTime(tones[idx % 2], t);
+            t += toneDuration;
+            idx++;
+        }
+
+        // Filtro passa-basso per timbro realistico della tromba
+        const filter = actx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(1400, now);
+
+        // Fade in (0.5s) e fade out (0.6s)
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.exponentialRampToValueAtTime(0.40, now + 0.5);
+        gain.gain.setValueAtTime(0.40, now + totalDuration - 0.6);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + totalDuration);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(actx.destination);
+
+        osc.start(now);
+        osc.stop(now + totalDuration);
+    } catch(e) {}
+}
+
+function triggerTeleport() {
+
+    if (isTeleporting) return;
+    isTeleporting = true;
+    teleportTimer = TELEPORT_DELAY;
+
+    playAmbulanceSiren();
+
+    try {
+        sessionStorage.setItem("enemy_hp", enemy.hp);
+        sessionStorage.setItem("game_difficulty", currentDifficultyIndex);
+    } catch(e) {}
+
+    const banner = document.getElementById("teleport-banner");
+    if (banner) {
+        const title = banner.querySelector("#teleport-title");
+        const desc = banner.querySelector("#teleport-desc");
+        if (title) title.textContent = "⚠️ SEI STATA SOTTOPOSTA A TSO!";
+        if (desc) desc.textContent = "Fuga in città... Raggiungi il taxi!";
+        banner.classList.add("visible");
+    }
+
+    setTimeout(() => {
+        window.location.href = "Sfondo 4.html";
+    }, 2500);
+
+}
+
+function updateTeleport(dt) {
+
+    if (!isTeleporting) return;
+
+    teleportTimer -= dt;
+    if (teleportTimer <= 0) {
+        isTeleporting = false;
+
+        // Sposta il giocatore in un'altra parte del mondo (nuove coordinate)
+        cameraX = (Math.random() - 0.5) * 40 + 120;
+        cameraZ = cameraZ + 60 + Math.random() * 40;
+
+        // Riposiziona il nemico nella nuova area
+        enemy.x = cameraX + (Math.random() - 0.5) * 1.2;
+        enemy.z = cameraZ + 1.2 + Math.random() * 0.6;
+        enemy.vz = -0.00035;
+
+        // Riposiziona ostacoli e punti nella nuova area
+        obstacles.length = 0;
+        spawnObstacle(cameraZ + 2.0);
+
+        puntosOnGround.length = 0;
+        spawnPunto();
+
+        const banner = document.getElementById("teleport-banner");
+        if (banner) banner.classList.remove("visible");
+    }
+
+}
+
+function updateObstacles(dt) {
+
+    const diff = getDifficulty();
+
+    obstacleSpawnTimer += dt;
+    if (obstacleSpawnTimer >= diff.obstacleInterval && obstacles.length < diff.maxObstacles) {
+        obstacleSpawnTimer = 0;
+        spawnObstacle();
+    }
+
+    // Controllo collisione: finestra del 60% della viewport
+    const projScaleObs = Math.max(W * 0.13, H * 0.085);
+    const obstacleWindow = W * 0.60;
+
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+        const obs = obstacles[i];
+        const relZ = obs.z - cameraZ;
+        const relX = obs.x - cameraX;
+
+        // Se l'ostacolo transita all'altezza del giocatore entro il 60% centrale della viewport
+        if (relZ >= -0.05 && relZ <= 0.18 && !isTeleporting) {
+            const screenX = W / 2 + (relX / 0.125) * projScaleObs;
+            const distFromCenter = Math.abs(screenX - W / 2);
+
+            if (distFromCenter <= obstacleWindow / 2) {
+                triggerTeleport();
+                break;
+            }
+        }
+
+        // Rimuovi se lasciato molto indietro
+        if (relZ < -0.6) {
+            obstacles.splice(i, 1);
+        }
+    }
+
+}
+
+function drawObstacles() {
+
+    if (!ostacoloImg.complete || ostacoloImg.naturalWidth === 0) return;
+
+    const refDim = Math.min(H, W * 1.5);
+    const aspect = ostacoloImg.naturalWidth / ostacoloImg.naturalHeight;
+
+    for (const obs of obstacles) {
+        const proj = projectToScreen(obs.x, obs.z);
+        if (!proj) continue;
+
+        const obsH = refDim * 0.34 * Math.pow(proj.p, 0.7);
+        const obsW = obsH * aspect;
+
+        if (proj.screenX < -obsW * 2 || proj.screenX > W + obsW * 2) continue;
+
+        // Ombra alla base dell'ostacolo
+        ctx.save();
+        ctx.fillStyle = "rgba(0, 0, 0, 0.30)";
+        ctx.beginPath();
+        ctx.ellipse(
+            proj.screenX,
+            proj.screenY - 2,
+            obsW * 0.45,
+            obsW * 0.16,
+            0,
+            0,
+            Math.PI * 2
+        );
+        ctx.fill();
+
+        // Disegna Ostacolo.svg
+        ctx.drawImage(
+            ostacoloImg,
+            proj.screenX - obsW / 2,
+            proj.screenY - obsH,
+            obsW,
+            obsH
+        );
+        ctx.restore();
+    }
+
+}
+
+
+/* =====================================================
+   GAME LOOP
+===================================================== */
+
+let lastTime =
+    performance.now();
+
+
+function gameLoop(now) {
+
+    let dt =
+        now -
+        lastTime;
+
+
+    lastTime =
+        now;
+
+
+    dt =
+        Math.min(
+            dt,
+            50
+        );
+
+
+    /*
+       AVANZAMENTO CONTINUO (VELOCITÀ DINAMICA CON PUNTI)
+    */
+
+    if (!isVictory) {
+
+        cameraZ +=
+            forwardSpeed *
+            dt;
+
+    }
+
+
+    /*
+       STERZATA (CON INERZIA SE SI HANNO PUNTI)
+    */
+
+    if (!isVictory) {
+        const targetTurn = (rightPressed ? 1 : 0) - (leftPressed ? 1 : 0);
+        const steerResponsiveness = 1 / (1 + collectedPoints * 0.65);
+        currentSteerVelocity += (targetTurn - currentSteerVelocity) * (0.16 * steerResponsiveness);
+        cameraX += currentSteerVelocity * BASE_SIDE_SPEED * dt;
+    }
+
+
+    /*
+       AGGIORNAMENTO
+    */
+
+    updateEnemy(dt);
+
+    updateAxe(dt);
+
+    updatePuntos(dt);
+
+    updateObstacles(dt);
+
+    updateTeleport(dt);
+
+
+    /*
+       DISEGNO
+    */
+
+    drawSky(dt);
+
+    drawTrees();
+
+    drawMeadow();
+
+    drawPuntos();
+
+    drawObstacles();
+
+    drawEnemy();
+
+    drawAxe();
+
+    drawCrosshair();
+
+    // Effetto visivo di transizione teletrasporto
+    if (isTeleporting) {
+        ctx.save();
+        const flashAlpha = Math.sin((teleportTimer / TELEPORT_DELAY) * Math.PI) * 0.45;
+        ctx.fillStyle = "rgba(255, 255, 255, " + flashAlpha + ")";
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+    }
+
+    updateStatus();
+
+
+    requestAnimationFrame(
+        gameLoop
+    );
+
+}
+
+
+requestAnimationFrame(
+    gameLoop
+);
+
+
+/* =====================================================
+   BLOCCO SCROLL TOUCH
+===================================================== */
+
+document.addEventListener(
+
+    "touchmove",
+
+    function(e) {
+
+        e.preventDefault();
+
+    },
+
+    {
+        passive: false
+    }
+
+);
+
+
+/* =====================================================
+   COLONNA SONORA - ONDA QUADRA 16 BATTUTE IN LOOP
+===================================================== */
+
+(function initSoundtrack() {
+    var stCtx = null;
+    var stPlaying = false;
+
+    var NOTE_FREQ = {
+        G3:196.00, Bb3:233.08, B3:246.94,
+        C4:261.63, D4:293.66, Eb4:311.13, F4:349.23,
+        Fs4:369.99, G4:392.00, Ab4:415.30, A4:440.00,
+        Bb4:466.16, C5:523.25
+    };
+
+    var BPM = 130;
+    var Q = 60 / BPM;
+    var E = Q / 2;
+    var S = Q / 4;
+
+    // [nota, durata] — null = pausa
+    var melody = [
+        // Battuta 1
+        ["C4",E],["Eb4",E],["G4",Q],["Fs4",E],["G4",E],["Bb4",Q],
+        // Battuta 2
+        ["G4",E],["Fs4",E],["F4",Q],["Eb4",E],["D4",E],["C4",Q],
+        // Battuta 3
+        ["C4",E],["Eb4",E],["Ab4",Q],["G4",E],["Fs4",E],["G4",Q],
+        // Battuta 4
+        ["Bb4",E],["G4",E],["Eb4",Q],["D4",E],["C4",E],[null,Q],
+        // Battuta 5
+        ["G3",E],["C4",E],["Eb4",E],["G4",E],["Fs4",Q],["F4",E],["Eb4",E],
+        // Battuta 6
+        ["D4",E],["F4",E],["Ab4",Q],["G4",E],["Fs4",E],["G4",Q],
+        // Battuta 7
+        ["C5",E],["Bb4",E],["Ab4",Q],["G4",E],["Fs4",E],["F4",Q],
+        // Battuta 8
+        ["Eb4",E],["D4",E],["C4",Q],["G3",E],["Bb3",E],["C4",Q],
+        // Battuta 9
+        ["C4",E],["Eb4",E],["G4",Q],["Bb4",E],["G4",E],["Fs4",Q],
+        // Battuta 10
+        ["F4",E],["Ab4",E],["C5",Q],["Bb4",E],["Ab4",E],["G4",Q],
+        // Battuta 11
+        ["Eb4",E],["G4",E],["Bb4",Q],["A4",E],["Ab4",E],["G4",Q],
+        // Battuta 12
+        ["Fs4",E],["G4",E],["Eb4",Q],["D4",E],["C4",E],["Bb3",Q],
+        // Battuta 13
+        ["G3",E],["C4",E],["Eb4",E],["Fs4",E],["G4",Q],["Bb4",E],["G4",E],
+        // Battuta 14
+        ["Ab4",E],["G4",E],["Fs4",Q],["F4",E],["Eb4",E],["D4",Q],
+        // Battuta 15
+        ["C4",E],["Eb4",E],["G4",Q],["Bb4",E],["A4",E],["Ab4",Q],
+        // Battuta 16
+        ["G4",E],["Fs4",E],["F4",E],["Eb4",E],["D4",Q],["G3",E],["B3",E]
+    ];
+
+    // Calcola durata totale del loop
+    var loopDuration = 0;
+    for (var m = 0; m < melody.length; m++) loopDuration += melody[m][1];
+
+    function scheduleMelody(startTime) {
+        var t = startTime;
+        for (var i = 0; i < melody.length; i++) {
+            var note = melody[i][0];
+            var dur = melody[i][1];
+            if (note !== null) {
+                var freq = NOTE_FREQ[note];
+                if (freq) {
+                    var osc = stCtx.createOscillator();
+                    var g = stCtx.createGain();
+                    osc.type = "square";
+                    osc.frequency.value = freq;
+
+                    var noteDur = dur * 0.82;
+                    var attack = 0.012;
+                    var release = 0.018;
+
+                    g.gain.setValueAtTime(0, t);
+                    g.gain.linearRampToValueAtTime(0.05, t + attack);
+                    if (noteDur > attack + release) {
+                        g.gain.setValueAtTime(0.05, t + noteDur - release);
+                    }
+                    g.gain.linearRampToValueAtTime(0, t + noteDur);
+
+                    osc.connect(g);
+                    g.connect(stCtx.destination);
+                    osc.start(t);
+                    osc.stop(t + noteDur + 0.005);
+                }
+            }
+            t += dur;
+        }
+    }
+
+    // Buffer riutilizzabili per la batteria
+    var hhBuffer = null;
+    var kickBuffer = null;
+
+    function createHiHatBuffer() {
+        var len = Math.floor(stCtx.sampleRate * 0.04);
+        var buf = stCtx.createBuffer(1, len, stCtx.sampleRate);
+        var data = buf.getChannelData(0);
+        for (var i = 0; i < len; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (stCtx.sampleRate * 0.008));
+        }
+        return buf;
+    }
+
+    function createKickBuffer() {
+        var len = Math.floor(stCtx.sampleRate * 0.12);
+        var buf = stCtx.createBuffer(1, len, stCtx.sampleRate);
+        var data = buf.getChannelData(0);
+        for (var i = 0; i < len; i++) {
+            var t = i / stCtx.sampleRate;
+            // Sinusoide che scende rapidamente da 150 Hz a 40 Hz
+            var freq = 150 * Math.exp(-t * 30) + 40;
+            data[i] = Math.sin(2 * Math.PI * freq * t) * Math.exp(-t * 18);
+        }
+        return buf;
+    }
+
+    function playHH(time) {
+        var src = stCtx.createBufferSource();
+        src.buffer = hhBuffer;
+        var filt = stCtx.createBiquadFilter();
+        filt.type = "highpass";
+        filt.frequency.value = 7000;
+        var g = stCtx.createGain();
+        g.gain.setValueAtTime(0.045, time);
+        g.gain.exponentialRampToValueAtTime(0.001, time + 0.035);
+        src.connect(filt);
+        filt.connect(g);
+        g.connect(stCtx.destination);
+        src.start(time);
+    }
+
+    function playKick(time) {
+        var src = stCtx.createBufferSource();
+        src.buffer = kickBuffer;
+        var g = stCtx.createGain();
+        g.gain.setValueAtTime(0.08, time);
+        g.gain.exponentialRampToValueAtTime(0.001, time + 0.10);
+        src.connect(g);
+        g.connect(stCtx.destination);
+        src.start(time);
+    }
+
+    function scheduleDrums(startTime) {
+        // 16 battute in 4/4 = 64 quarti = 256 sedicesimi
+        var totalSixteenths = Math.round(loopDuration / S);
+        for (var i = 0; i < totalSixteenths; i++) {
+            var t = startTime + i * S;
+            // Charleston su ogni sedicesimo
+            playHH(t);
+            // Cassa sul beat 1 e 3 di ogni battuta (ogni 16 sedicesimi = 1 battuta)
+            var posInBar = i % 16;
+            if (posInBar === 0 || posInBar === 8) {
+                playKick(t);
+            }
+        }
+    }
+
+    function loopForever() {
+        if (!stPlaying) return;
+
+        // Crea buffer batteria se non esistono ancora
+        if (!hhBuffer) hhBuffer = createHiHatBuffer();
+        if (!kickBuffer) kickBuffer = createKickBuffer();
+
+        var loopStart = stCtx.currentTime + 0.08;
+        scheduleMelody(loopStart);
+        scheduleDrums(loopStart);
+        setTimeout(loopForever, (loopDuration - 0.3) * 1000);
+    }
+
+    function startPlayback() {
+        if (stPlaying) return;
+        try {
+            var AC = window.AudioContext || window.webkitAudioContext;
+            if (!AC) return;
+            stCtx = new AC();
+            if (stCtx.state === "suspended") stCtx.resume();
+            stPlaying = true;
+            loopForever();
+        } catch(e) {}
+    }
+
+    // Avvia alla prima interazione utente (necessario per mobile)
+    startPlayback();
+    document.addEventListener("click", startPlayback, { once: true });
+    document.addEventListener("keydown", startPlayback, { once: true });
+    document.addEventListener("touchstart", startPlayback, { once: true });
+})();
+</script>
+
+</body>
+
+</html>

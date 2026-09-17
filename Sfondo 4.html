@@ -1,0 +1,1358 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width,
+               initial-scale=1.0,
+               maximum-scale=1.0,
+               user-scalable=no">
+
+<title>Fuga in Città - Sfondo 4</title>
+
+<style>
+
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #6a96bc;
+    touch-action: none;
+    font-family: Arial, sans-serif;
+}
+
+canvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+    image-rendering: pixelated;
+}
+
+/* =====================================================
+   INDICATORE DI STATO
+===================================================== */
+
+#status {
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 6px 14px;
+    background: rgba(15, 20, 28, 0.65);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    z-index: 20;
+    pointer-events: none;
+    text-align: center;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+    white-space: nowrap;
+}
+
+/* =====================================================
+   HUD DISTANZA TAXI
+===================================================== */
+
+#taxi-hud {
+    position: fixed;
+    top: 48px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 12px;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 215, 0, 0.7);
+    border-radius: 6px;
+    color: #ffd54f;
+    font-size: 12px;
+    font-weight: bold;
+    z-index: 20;
+    pointer-events: none;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+}
+
+/* =====================================================
+   AVVISO SALITA TAXI (HINT)
+===================================================== */
+
+#board-hint {
+    position: fixed;
+    top: 38%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.9);
+    padding: 12px 20px;
+    background: rgba(20, 80, 40, 0.90);
+    border: 3px solid #69f0ae;
+    border-radius: 12px;
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: bold;
+    text-align: center;
+    z-index: 30;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+}
+
+#board-hint.visible {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+/* =====================================================
+   OVERLAY IMPATTO INFERMIERE
+===================================================== */
+
+#impact-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 15;
+    background: radial-gradient(circle, transparent 40%, rgba(220, 40, 40, 0.45) 100%);
+    opacity: 0;
+    transition: opacity 0.15s ease-out;
+}
+
+#impact-overlay.active {
+    opacity: 1;
+}
+
+/* =====================================================
+   CONTROLLI TOUCH
+===================================================== */
+
+#controls {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    z-index: 25;
+}
+
+.button {
+    width: 78px;
+    height: 68px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    border: 3px solid rgba(255,255,255,0.7);
+    background: rgba(0,0,0,0.38);
+    color: white;
+    font-size: 26px;
+    font-weight: bold;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.25);
+    touch-action: none;
+    cursor: pointer;
+}
+
+#boardBtn {
+    width: 126px;
+    height: 68px;
+    font-size: 16px;
+    letter-spacing: 1px;
+    background: rgba(220, 160, 20, 0.45);
+    border: 3px solid rgba(255, 230, 130, 0.8);
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+#boardBtn.ready {
+    background: rgba(46, 125, 50, 0.85);
+    border-color: #69f0ae;
+    color: #ffffff;
+    box-shadow: 0 0 16px rgba(105, 240, 174, 0.7), 0 4px 0 rgba(0,0,0,0.25);
+    animation: pulseBoard 0.9s infinite alternate;
+}
+
+@keyframes pulseBoard {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.05); }
+}
+
+.button.active {
+    background: rgba(255,255,255,0.35);
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 rgba(0,0,0,0.25);
+}
+
+#boardBtn.active {
+    transform: translateY(3px);
+    background: rgba(255, 200, 50, 0.85);
+}
+
+/* =====================================================
+   SCHERMO VITTORIA
+===================================================== */
+
+#victory-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(8, 22, 16, 0.90);
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    color: white;
+    text-align: center;
+    backdrop-filter: blur(6px);
+    padding: 24px;
+}
+
+#victory-screen.visible {
+    display: flex;
+}
+
+#victory-title {
+    font-size: 34px;
+    font-weight: bold;
+    color: #ffd54f;
+    text-shadow: 0 0 24px rgba(255, 213, 79, 0.6);
+    margin-bottom: 12px;
+    letter-spacing: 1.5px;
+}
+
+#victory-desc {
+    font-size: 17px;
+    color: #e0f2e9;
+    margin-bottom: 26px;
+    max-width: 420px;
+    line-height: 1.4;
+}
+
+.victory-btn {
+    padding: 13px 30px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #ffffff;
+    background: #2e7d32;
+    border: 2px solid #81c784;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    touch-action: manipulation;
+    margin: 6px;
+}
+
+.victory-btn:active {
+    transform: translateY(2px);
+    background: #388e3c;
+}
+
+.victory-btn.secondary {
+    background: #1565c0;
+    border-color: #64b5f6;
+}
+
+.victory-btn.secondary:active {
+    background: #1976d2;
+}
+
+@media (min-width: 800px) {
+    #controls {
+        opacity: 0.20;
+        transition: opacity 0.2s;
+    }
+    #controls:hover {
+        opacity: 1;
+    }
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+<canvas id="game"></canvas>
+
+<div id="status">CORRI MARIA! RAGGIUNGI IL TAXI...</div>
+
+<div id="taxi-hud">
+    <span>🚕 TAXI:</span>
+    <span id="taxi-dist-text">-- m</span>
+</div>
+
+<div id="board-hint">🚕 BRAVA MARIA!<br>PREMI SALI O SPAZIO PER SALIRE!</div>
+
+<div id="impact-overlay"></div>
+
+<div id="victory-screen">
+    <div id="victory-title">🚕 BRAVISSIMA MARIA!</div>
+    <div id="victory-desc">Hai seminato gli infermieri e sei salita a bordo del taxi! Missione compiuta!</div>
+    <button class="victory-btn" onclick="restartGame()">GIOCA ANCORA, MARIA!</button>
+    <button class="victory-btn secondary" onclick="goToMeadow()">TORNA AL PRATO (LIVELLO 1)</button>
+</div>
+
+<div id="controls">
+    <div class="button" id="leftBtn">←</div>
+    <div class="button" id="boardBtn">SALI</div>
+    <div class="button" id="rightBtn">→</div>
+</div>
+
+
+<script>
+
+/* =====================================================
+   CANVAS & RIDIMENSIONAMENTO RESPONSIVE
+===================================================== */
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+ctx.imageSmoothingEnabled = false;
+
+let W = 0;
+let H = 0;
+let DPR = 1;
+
+function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth;
+    H = window.innerHeight;
+
+    canvas.width = W * DPR;
+    canvas.height = H * DPR;
+    canvas.style.width = W + "px";
+    canvas.style.height = H + "px";
+
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+
+window.addEventListener("resize", resize);
+resize();
+
+
+/* =====================================================
+   CONFIGURAZIONE E PROSPETTIVA
+===================================================== */
+
+const HORIZON = 0.40;
+
+const BASE_FORWARD_SPEED = 0.00065;
+let currentSpeed = BASE_FORWARD_SPEED;
+
+const BASE_SIDE_SPEED = 0.0019;
+let currentSteerVelocity = 0;
+
+let cameraZ = 0;
+let cameraX = 0;
+
+let isVictory = false;
+let leftPressed = false;
+let rightPressed = false;
+
+// Impatto e rallentamento
+let slowdownTimer = 0;
+const SLOWDOWN_DURATION = 1600;
+let screenShake = 0;
+
+
+/* =====================================================
+   ASSET GRAFICI (SVG)
+===================================================== */
+
+const nurseImg = new Image();
+nurseImg.src = "Infermiere 1.svg";
+
+const taxi1Img = new Image();
+taxi1Img.src = "Taxi 1.svg";
+
+const taxi2Img = new Image();
+taxi2Img.src = "Taxi 2.svg";
+
+
+/* =====================================================
+   HASH DETERMINISTICO
+===================================================== */
+
+function hash(x, y, n = 0) {
+    const s = Math.sin(x * 127.1 + y * 311.7 + n * 74.7) * 43758.5453123;
+    return s - Math.floor(s);
+}
+
+
+/* =====================================================
+   PROIEZIONE FALSO 3D
+===================================================== */
+
+function projectToScreen(worldX, worldZ) {
+    const relZ = worldZ - cameraZ;
+    if (relZ <= 0.035 || relZ > 4.5) return null;
+
+    const horizonY = H * HORIZON;
+    const perspective = 1 / relZ;
+    const zoom = Math.pow(perspective / 8, 1.25);
+    const p = Math.min(1.35, zoom);
+    const screenY = horizonY + p * (H - horizonY);
+
+    const relX = worldX - cameraX;
+    const projScale = Math.max(W * 0.13, H * 0.085);
+    const screenX = W / 2 + (relX / relZ) * projScale;
+
+    return { screenX, screenY, p, relZ, relX };
+}
+
+
+/* =====================================================
+   CIELO E NUVOLE
+===================================================== */
+
+let cloudOffset = 0;
+
+function drawSky(dt) {
+    const horizonY = H * HORIZON;
+
+    const gradient = ctx.createLinearGradient(0, 0, 0, horizonY);
+    gradient.addColorStop(0, "#6a9bc2");
+    gradient.addColorStop(1, "#9ec1db");
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, W, horizonY);
+
+    cloudOffset += 0.000018 * dt;
+
+    const clouds = [
+        { x: 0.10, y: 0.14, s: 1.00, type: 0 },
+        { x: 0.42, y: 0.08, s: 0.75, type: 1 },
+        { x: 0.72, y: 0.18, s: 0.90, type: 0 },
+        { x: 0.91, y: 0.06, s: 0.65, type: 1 }
+    ];
+
+    for (const c of clouds) {
+        let cx = (c.x + cloudOffset) % 1.4 * W;
+        if (cx > W + 200) cx -= W + 400;
+        drawCloud(cx, c.y * H, c.s, c.type);
+    }
+}
+
+function drawCloud(x, y, scale, type) {
+    ctx.fillStyle = "rgba(220, 226, 230, 0.85)";
+    const u = 16 * scale;
+
+    if (type === 0) {
+        ctx.fillRect(x, y + u * 1.0, u * 7, u * 1.4);
+        ctx.fillRect(x + u, y + u * 0.5, u * 5, u * 1.5);
+        ctx.fillRect(x + u * 2, y, u * 3, u * 1.6);
+        ctx.fillRect(x + u * 5, y + u * 0.8, u * 2, u * 1.6);
+    } else {
+        ctx.fillRect(x, y + u, u * 6, u * 1.3);
+        ctx.fillRect(x + u, y + u * 0.4, u * 3, u * 1.4);
+        ctx.fillRect(x + u * 3, y, u * 2, u * 1.5);
+        ctx.fillRect(x + u * 5, y + u * 0.7, u * 2, u * 1.6);
+    }
+}
+
+
+/* =====================================================
+   PALAZZI SULL'ORIZZONTE
+===================================================== */
+
+function drawBuildings() {
+    const SPACING = 0.72;
+    const BUILD_Z = 18.0;
+    const BUILD_FOV = 1.8;
+
+    const first = Math.floor(cameraX / SPACING) - 22;
+    const last = first + 45;
+    const groundY = H * HORIZON + H * 0.012;
+
+    for (let i = first; i <= last; i++) {
+        const worldX = i * SPACING;
+        const r1 = hash(i, 500, 1);
+        if (r1 < 0.40) continue;
+
+        const r2 = hash(i, 500, 2);
+        const r3 = hash(i, 500, 3);
+        const r4 = hash(i, 500, 4);
+
+        const relX = worldX - cameraX;
+        const screenX = W / 2 + relX * (BUILD_FOV / BUILD_Z) * W;
+
+        const bHeight = H * (0.045 + r2 * 0.055);
+        const bWidth = W * (0.020 + r3 * 0.028);
+
+        if (screenX < -bWidth * 3 || screenX > W + bWidth * 3) continue;
+
+        ctx.fillStyle = r4 < 0.33 ? "#686b73" : (r4 < 0.66 ? "#7a7e87" : "#5a5d64");
+        ctx.fillRect(screenX - bWidth * 0.5, groundY - bHeight, bWidth, bHeight);
+
+        // Tetto
+        ctx.fillStyle = "#4a4d52";
+        ctx.fillRect(screenX - bWidth * 0.55, groundY - bHeight - bWidth * 0.08, bWidth * 1.1, bWidth * 0.08);
+
+        // Finestre
+        const winW = Math.max(1, bWidth * 0.10);
+        const winH = Math.max(1, bHeight * 0.05);
+        for (let row = 0; row < 4; row++) {
+            for (let col = 0; col < 3; col++) {
+                const wr = hash(i + col, row, 900);
+                if (wr < 0.25) continue;
+                const wx = screenX - bWidth * 0.32 + col * bWidth * 0.30;
+                const wy = groundY - bHeight * 0.80 + row * bHeight * 0.18;
+                ctx.fillStyle = wr > 0.65 ? "#fff59d" : "#37393d";
+                ctx.fillRect(wx, wy, winW, winH);
+            }
+        }
+    }
+}
+
+
+/* =====================================================
+   STRADA IN ASFALTO CON STRISCE BIANCHE
+===================================================== */
+
+function drawAsphalt() {
+    const horizonY = H * HORIZON;
+
+    // Fondo asfalto
+    ctx.fillStyle = "#484a4d";
+    ctx.fillRect(0, horizonY, W, H - horizonY);
+
+    // Banchine laterali e corsia
+    const ROAD_WIDTH = 2.4;
+    const steps = 40;
+    for (let i = 0; i < steps; i++) {
+        const t1 = i / steps;
+        const t2 = (i + 1) / steps;
+        const z1 = 0.04 + Math.pow(t1, 1.8) * 3.8;
+        const z2 = 0.04 + Math.pow(t2, 1.8) * 3.8;
+
+        const p1 = projectToScreen(cameraX, cameraZ + z1);
+        const p2 = projectToScreen(cameraX, cameraZ + z2);
+        if (!p1 || !p2) continue;
+
+        // Linea tratteggiata centrale
+        const dashZ = (cameraZ + z1) % 0.40;
+        if (dashZ < 0.22) {
+            const laneW = Math.max(2, W * 0.012 * p1.p);
+            ctx.fillStyle = "rgba(240, 240, 240, 0.75)";
+            ctx.fillRect(p1.screenX - laneW / 2, p2.screenY, laneW, Math.max(2, p1.screenY - p2.screenY + 1));
+        }
+
+        // Strisce continue bordi strada
+        const edgeW = Math.max(1.5, W * 0.010 * p1.p);
+        const leftEdgeX1 = p1.screenX - (ROAD_WIDTH / z1) * (W * 0.13);
+        const rightEdgeX1 = p1.screenX + (ROAD_WIDTH / z1) * (W * 0.13);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.50)";
+        ctx.fillRect(leftEdgeX1, p2.screenY, edgeW, Math.max(2, p1.screenY - p2.screenY + 1));
+        ctx.fillRect(rightEdgeX1, p2.screenY, edgeW, Math.max(2, p1.screenY - p2.screenY + 1));
+    }
+}
+
+
+/* =====================================================
+   DIFFICOLTÀ CITTÀ (TAXI & INFERMIERI)
+===================================================== */
+
+const CITY_DIFFICULTIES = [
+    {
+        name: "FACILE",
+        taxiForwardSpeed: 0.00030,
+        taxiLateralSpeed: 0.00050,
+        maxNurses: 2,
+        nurseSpawnInterval: 3800
+    },
+    {
+        name: "MEDIO",
+        taxiForwardSpeed: 0.00042,
+        taxiLateralSpeed: 0.00068,
+        maxNurses: 4,
+        nurseSpawnInterval: 2500
+    },
+    {
+        name: "DIFFICILE",
+        taxiForwardSpeed: 0.00058,
+        taxiLateralSpeed: 0.00088,
+        maxNurses: 6,
+        nurseSpawnInterval: 1700
+    }
+];
+
+let currentDifficultyIndex = 1; // Default MEDIO
+try {
+    const savedDiff = sessionStorage.getItem("game_difficulty");
+    if (savedDiff !== null && !isNaN(parseInt(savedDiff))) {
+        currentDifficultyIndex = parseInt(savedDiff) % CITY_DIFFICULTIES.length;
+    }
+} catch(e) {}
+
+function getCityDifficulty() {
+    return CITY_DIFFICULTIES[currentDifficultyIndex];
+}
+
+
+/* =====================================================
+   INFERMIERI (NURSES) - SPAWN, MOVIMENTO & IMPATTO
+===================================================== */
+
+const nurses = [];
+let nurseSpawnTimer = 0;
+
+function createNurse(customZ) {
+    return {
+        x: cameraX + (Math.random() - 0.5) * 2.2,
+        z: customZ || (cameraZ + 2.2 + Math.random() * 1.5),
+        vz: -0.00048 - Math.random() * 0.00022, // Corrono incontro al protagonista
+        walkTime: Math.random() * 10,
+        impactCooldown: 0
+    };
+}
+
+// Inizializza infermieri in base alla difficoltà
+const initialNursesCount = Math.min(3, getCityDifficulty().maxNurses);
+for (let i = 0; i < initialNursesCount; i++) {
+    nurses.push(createNurse(cameraZ + 1.2 + i * 0.8));
+}
+
+function playNurseImpactSound() {
+    try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const actx = new AudioContext();
+        const now = actx.currentTime;
+
+        // Colpo sordo basso (impatto corpo)
+        const osc1 = actx.createOscillator();
+        const g1 = actx.createGain();
+        osc1.type = "sine";
+        osc1.frequency.setValueAtTime(120, now);
+        osc1.frequency.exponentialRampToValueAtTime(45, now + 0.18);
+        g1.gain.setValueAtTime(0.7, now);
+        g1.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+        osc1.connect(g1);
+        g1.connect(actx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.25);
+
+        // Rumore percussivo breve
+        const bufLen = actx.sampleRate * 0.12;
+        const buf = actx.createBuffer(1, bufLen, actx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < bufLen; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (actx.sampleRate * 0.025));
+        }
+        const noise = actx.createBufferSource();
+        noise.buffer = buf;
+        const filt = actx.createBiquadFilter();
+        filt.type = "bandpass";
+        filt.frequency.value = 900;
+        filt.Q.value = 1.2;
+        const g2 = actx.createGain();
+        g2.gain.setValueAtTime(0.45, now);
+        g2.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        noise.connect(filt);
+        filt.connect(g2);
+        g2.connect(actx.destination);
+        noise.start(now);
+    } catch(e) {}
+}
+
+function triggerNurseImpact(nurse) {
+    nurse.impactCooldown = 2200;
+    slowdownTimer = SLOWDOWN_DURATION;
+    screenShake = 16;
+
+    playNurseImpactSound();
+
+    const overlay = document.getElementById("impact-overlay");
+    if (overlay) {
+        overlay.classList.add("active");
+        setTimeout(() => overlay.classList.remove("active"), 320);
+    }
+
+    // Sposta leggermente lateralmente l'infermiere dopo l'urto
+    nurse.x += (nurse.x >= cameraX ? 0.35 : -0.35);
+}
+
+function updateNurses(dt) {
+    const diff = getCityDifficulty();
+    nurseSpawnTimer += dt;
+    if (nurseSpawnTimer >= diff.nurseSpawnInterval && nurses.length < diff.maxNurses) {
+        nurseSpawnTimer = 0;
+        nurses.push(createNurse());
+    }
+
+    for (let i = nurses.length - 1; i >= 0; i--) {
+        const n = nurses[i];
+
+        if (n.impactCooldown > 0) {
+            n.impactCooldown -= dt;
+        }
+
+        // Movimento in corsa verso il protagonista
+        n.z += n.vz * dt;
+
+        // Leggera convergenza verso il giocatore per tentare di intercettarlo
+        const steerDir = (cameraX - n.x);
+        n.x += Math.sign(steerDir) * 0.00022 * dt;
+
+        n.walkTime += dt * 0.008;
+
+        const relZ = n.z - cameraZ;
+        const relX = n.x - cameraX;
+
+        // Controllo impatto col protagonista (quando transita all'altezza della telecamera)
+        if (relZ >= -0.05 && relZ <= 0.16 && Math.abs(relX) <= 0.22 && n.impactCooldown <= 0) {
+            triggerNurseImpact(n);
+        }
+
+        // Se oltrepassato e lasciato indietro, rimuovi e ricrea avanti
+        if (relZ < -0.6) {
+            nurses.splice(i, 1);
+            nurses.push(createNurse(cameraZ + 2.4 + Math.random() * 1.4));
+        }
+    }
+}
+
+function drawNurse(n) {
+    if (!nurseImg.complete || nurseImg.naturalWidth === 0) return;
+
+    const proj = projectToScreen(n.x, n.z);
+    if (!proj) return;
+
+    const aspect = nurseImg.naturalWidth / nurseImg.naturalHeight;
+    const refDim = Math.min(H, W * 1.5);
+    const nHeight = refDim * 0.30 * Math.pow(proj.p, 0.72);
+    const nWidth = nHeight * aspect;
+
+    if (proj.screenX < -nWidth * 2 || proj.screenX > W + nWidth * 2) return;
+
+    const bobY = Math.abs(Math.sin(n.walkTime * 8)) * (nHeight * 0.04);
+
+    // Ombra
+    ctx.save();
+    ctx.fillStyle = "rgba(0, 0, 0, 0.28)";
+    ctx.beginPath();
+    ctx.ellipse(proj.screenX, proj.screenY - 2, nWidth * 0.45, nWidth * 0.18, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Sprite Infermiere 1.svg
+    ctx.drawImage(
+        nurseImg,
+        proj.screenX - nWidth / 2,
+        proj.screenY - nHeight - bobY,
+        nWidth,
+        nHeight
+    );
+    ctx.restore();
+}
+
+
+/* =====================================================
+   TAXI (LOGICA DI MOVIMENTO MULTI-DIREZIONALE)
+===================================================== */
+
+const taxi = {
+    x: 0,
+    z: 1.6,
+    vx: 0.00065,
+    vz: 0.00025,
+    state: "moving_right", // "moving_right", "moving_left", "moving_horizon"
+    stateTimer: 3500,
+    isBoarded: false
+};
+
+function updateTaxi(dt) {
+    if (taxi.isBoarded) {
+        // Il taxi accelera in fuga verso l'orizzonte con il protagonista a bordo
+        taxi.state = "moving_horizon";
+        taxi.vz = 0.0016;
+        taxi.z += taxi.vz * dt;
+        return;
+    }
+
+    taxi.stateTimer -= dt;
+    if (taxi.stateTimer <= 0) {
+        // Cambio comportamento di movimento
+        if (taxi.state === "moving_right") {
+            // Dopo aver attraversato a destra, gira verso l'orizzonte
+            taxi.state = "moving_horizon";
+            taxi.stateTimer = 2800 + Math.random() * 2000;
+        } else if (taxi.state === "moving_horizon") {
+            // Dopo aver viaggiato verso l'orizzonte, si sposta lateralmente (sinistra o destra)
+            taxi.state = taxi.x > cameraX ? "moving_left" : "moving_right";
+            taxi.stateTimer = 2600 + Math.random() * 1800;
+        } else {
+            // Da sinistra, torna a viaggiare verso l'orizzonte
+            taxi.state = "moving_horizon";
+            taxi.stateTimer = 2800 + Math.random() * 2000;
+        }
+    }
+
+    const diff = getCityDifficulty();
+
+    // Applica velocità in base allo stato e alla difficoltà
+    if (taxi.state === "moving_right") {
+        taxi.vx = diff.taxiLateralSpeed;
+        taxi.vz = 0.00015;
+    } else if (taxi.state === "moving_left") {
+        taxi.vx = -diff.taxiLateralSpeed;
+        taxi.vz = 0.00015;
+    } else if (taxi.state === "moving_horizon") {
+        taxi.vx = 0;
+        // Velocità verso l'orizzonte bilanciata in base alla difficoltà
+        taxi.vz = diff.taxiForwardSpeed;
+    }
+
+    // Limiti laterali della strada
+    if (taxi.x > cameraX + 1.6) {
+        taxi.state = "moving_left";
+    } else if (taxi.x < cameraX - 1.6) {
+        taxi.state = "moving_right";
+    }
+
+    // Mantieni il taxi a portata raggiungibile
+    const relZ = taxi.z - cameraZ;
+    if (relZ > 2.8) {
+        // Se troppo lontano, rallenta l'allontanamento
+        taxi.vz = Math.min(taxi.vz, 0.0001);
+    } else if (relZ < 0.25) {
+        // Se troppo vicino al giocatore, accelera in avanti
+        taxi.vz = Math.max(taxi.vz, 0.00055);
+    }
+
+    taxi.x += taxi.vx * dt;
+    taxi.z += taxi.vz * dt;
+}
+
+function isTaxiInBoardingRange() {
+    const relZ = taxi.z - cameraZ;
+    const relX = taxi.x - cameraX;
+    // Raggio d'azione per salire a bordo
+    const inDepth = relZ >= 0.08 && relZ <= 0.48;
+    const inWidth = Math.abs(relX) <= 0.36;
+    return inDepth && inWidth;
+}
+
+function drawTaxi() {
+    const proj = projectToScreen(taxi.x, taxi.z);
+    if (!proj) return;
+
+    let img;
+    let isMirrored = false;
+
+    if (taxi.state === "moving_horizon") {
+        // Verso l'orizzonte: vista posteriore Taxi 2.svg
+        img = taxi2Img;
+    } else if (taxi.state === "moving_right") {
+        // Da sinistra a destra: Taxi 1.svg normale
+        img = taxi1Img;
+    } else {
+        // Da destra a sinistra: Taxi 1.svg specchiato
+        img = taxi1Img;
+        isMirrored = true;
+    }
+
+    if (!img.complete || img.naturalWidth === 0) return;
+
+    const aspect = img.naturalWidth / img.naturalHeight;
+    const refDim = Math.min(H, W * 1.5);
+    // Dimensione taxi proporzionata
+    const taxiHeight = refDim * (taxi.state === "moving_horizon" ? 0.32 : 0.24) * Math.pow(proj.p, 0.75);
+    const taxiWidth = taxiHeight * aspect;
+
+    if (proj.screenX < -taxiWidth * 2 || proj.screenX > W + taxiWidth * 2) return;
+
+    // Ombra del taxi
+    ctx.save();
+    ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+    ctx.beginPath();
+    ctx.ellipse(proj.screenX, proj.screenY - 2, taxiWidth * 0.48, taxiWidth * 0.16, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Disegno veicolo con eventuale riflessione orizzontale
+    ctx.save();
+    ctx.translate(proj.screenX, proj.screenY);
+
+    if (isMirrored) {
+        ctx.scale(-1, 1);
+    }
+
+    ctx.drawImage(
+        img,
+        -taxiWidth / 2,
+        -taxiHeight,
+        taxiWidth,
+        taxiHeight
+    );
+    ctx.restore();
+    ctx.restore();
+}
+
+
+/* =====================================================
+   SALITA A BORDO DEL TAXI & VITTORIA
+===================================================== */
+
+function boardTaxi() {
+    if (isVictory || taxi.isBoarded) return;
+
+    if (isTaxiInBoardingRange()) {
+        taxi.isBoarded = true;
+        isVictory = true;
+
+        const status = document.getElementById("status");
+        if (status) status.textContent = "🚕 BRAVISSIMA MARIA! A BORDO DEL TAXI!";
+
+        const hint = document.getElementById("board-hint");
+        if (hint) {
+            hint.innerHTML = "🚕 BRAVA MARIA! SEI SALITA SUL TAXI!<br>Ritorno al Livello 1 per sconfiggere la badante...";
+            hint.classList.add("visible");
+        }
+
+        // Ritorno automatico al Livello 1 dopo essere saliti a bordo
+        setTimeout(() => {
+            window.location.href = "Sfondo 3.html?returned=1";
+        }, 1300);
+    } else {
+        // Feedback se si preme fuori portata
+        const status = document.getElementById("status");
+        if (status) {
+            status.textContent = "⚠️ SEI ANCORA LONTANA, MARIA! AVVICINATI!";
+            setTimeout(() => {
+                if (!isVictory && status) status.textContent = "CORRI MARIA! RAGGIUNGI IL TAXI...";
+            }, 1000);
+        }
+    }
+}
+
+function restartGame() {
+    isVictory = false;
+    taxi.isBoarded = false;
+    slowdownTimer = 0;
+    currentSteerVelocity = 0;
+
+    const victoryScreen = document.getElementById("victory-screen");
+    if (victoryScreen) victoryScreen.classList.remove("visible");
+
+    cameraX = 0;
+    cameraZ = 0;
+
+    taxi.x = 0;
+    taxi.z = cameraZ + 1.5;
+    taxi.state = "moving_right";
+    taxi.stateTimer = 3000;
+
+    nurses.length = 0;
+    const initialNursesCount = Math.min(3, getCityDifficulty().maxNurses);
+    for (let i = 0; i < initialNursesCount; i++) {
+        nurses.push(createNurse(cameraZ + 1.2 + i * 0.8));
+    }
+
+    const status = document.getElementById("status");
+    if (status) status.textContent = "CORRI MARIA! RAGGIUNGI IL TAXI...";
+}
+
+function goToMeadow() {
+    window.location.href = "Sfondo 3.html";
+}
+
+
+/* =====================================================
+   HUD E CONTROLLI TOUCH & TASTIERA
+===================================================== */
+
+function updateHud() {
+    const diff = getCityDifficulty();
+    const relZ = Math.max(0, taxi.z - cameraZ);
+    const distMeters = Math.round(relZ * 25);
+    const distText = document.getElementById("taxi-dist-text");
+    if (distText) distText.textContent = distMeters + " m (" + diff.name + ")";
+
+    const inRange = isTaxiInBoardingRange() && !taxi.isBoarded && !isVictory;
+
+    const boardBtn = document.getElementById("boardBtn");
+    if (boardBtn) {
+        boardBtn.classList.toggle("ready", inRange);
+    }
+
+    const hint = document.getElementById("board-hint");
+    if (hint) {
+        hint.classList.toggle("visible", inRange);
+    }
+
+    const status = document.getElementById("status");
+    if (status && !isVictory) {
+        if (slowdownTimer > 0) {
+            status.textContent = "💥 ATTENTA MARIA! RALLENTATA!";
+        } else if (inRange) {
+            status.textContent = "✨ BRAVA MARIA! PREMI [SALI]!";
+        } else {
+            status.textContent = "CORRI MARIA! RAGGIUNGI IL TAXI...";
+        }
+    }
+}
+
+// Configurazione pulsanti touch
+function setupButton(element, onPress) {
+    if (!element) return;
+
+    function start(e) {
+        e.preventDefault();
+        element.classList.add("active");
+        onPress(true);
+    }
+
+    function stop(e) {
+        e.preventDefault();
+        element.classList.remove("active");
+        onPress(false);
+    }
+
+    element.addEventListener("touchstart", start, { passive: false });
+    element.addEventListener("touchend", stop, { passive: false });
+    element.addEventListener("touchcancel", stop, { passive: false });
+    element.addEventListener("mousedown", start);
+    window.addEventListener("mouseup", stop);
+}
+
+setupButton(document.getElementById("leftBtn"), value => { leftPressed = value; });
+setupButton(document.getElementById("rightBtn"), value => { rightPressed = value; });
+
+const boardBtn = document.getElementById("boardBtn");
+if (boardBtn) {
+    boardBtn.addEventListener("click", () => boardTaxi());
+    boardBtn.addEventListener("touchstart", e => {
+        e.preventDefault();
+        boardTaxi();
+    }, { passive: false });
+}
+
+// Controlli Tastiera (Frecce / A-D per sterzare, Barra Spaziatrice per salire)
+window.addEventListener("keydown", e => {
+    if (e.code === "ArrowLeft" || e.code === "KeyA") {
+        leftPressed = true;
+        e.preventDefault();
+    }
+    if (e.code === "ArrowRight" || e.code === "KeyD") {
+        rightPressed = true;
+        e.preventDefault();
+    }
+    if (e.code === "Space" || e.code === "Enter") {
+        e.preventDefault();
+        boardTaxi();
+        if (boardBtn) boardBtn.classList.add("active");
+    }
+});
+
+window.addEventListener("keyup", e => {
+    if (e.code === "ArrowLeft" || e.code === "KeyA") {
+        leftPressed = false;
+    }
+    if (e.code === "ArrowRight" || e.code === "KeyD") {
+        rightPressed = false;
+    }
+    if (e.code === "Space" || e.code === "Enter") {
+        if (boardBtn) boardBtn.classList.remove("active");
+    }
+});
+
+window.addEventListener("blur", () => {
+    leftPressed = false;
+    rightPressed = false;
+});
+
+
+/* =====================================================
+   GAME LOOP
+===================================================== */
+
+let lastTime = performance.now();
+
+function gameLoop(now) {
+    let dt = now - lastTime;
+    lastTime = now;
+    dt = Math.min(dt, 50);
+
+    // Gestione rallentamento
+    if (slowdownTimer > 0) {
+        slowdownTimer = Math.max(0, slowdownTimer - dt);
+        currentSpeed = BASE_FORWARD_SPEED * 0.32; // Rallentato all'impatto
+    } else {
+        currentSpeed = BASE_FORWARD_SPEED;
+    }
+
+    // Avanzamento costante
+    if (!isVictory) {
+        cameraZ += currentSpeed * dt;
+    }
+
+    // Sterzata fluida
+    if (!isVictory) {
+        const targetTurn = (rightPressed ? 1 : 0) - (leftPressed ? 1 : 0);
+        currentSteerVelocity += (targetTurn - currentSteerVelocity) * 0.18;
+        cameraX += currentSteerVelocity * BASE_SIDE_SPEED * dt;
+    }
+
+    // Aggiornamento entità
+    updateNurses(dt);
+    updateTaxi(dt);
+
+    // Gestione scuotimento schermo (camera shake all'impatto)
+    ctx.save();
+    if (screenShake > 0) {
+        screenShake = Math.max(0, screenShake - dt * 0.05);
+        const shakeX = (Math.random() - 0.5) * screenShake;
+        const shakeY = (Math.random() - 0.5) * screenShake;
+        ctx.translate(shakeX, shakeY);
+    }
+
+    // Rendering scenario
+    drawSky(dt);
+    drawBuildings();
+    drawAsphalt();
+
+    // Ordinamento in profondità di Taxi e Infermieri (per disegnare prima i più lontani)
+    const renderList = [];
+    renderList.push({ type: "taxi", z: taxi.z });
+    for (const n of nurses) {
+        renderList.push({ type: "nurse", obj: n, z: n.z });
+    }
+    renderList.sort((a, b) => b.z - a.z);
+
+    for (const item of renderList) {
+        if (item.type === "taxi") {
+            drawTaxi();
+        } else {
+            drawNurse(item.obj);
+        }
+    }
+
+    ctx.restore();
+
+    updateHud();
+
+    requestAnimationFrame(gameLoop);
+}
+
+requestAnimationFrame(gameLoop);
+
+document.addEventListener("touchmove", e => e.preventDefault(), { passive: false });
+
+
+/* =====================================================
+   COLONNA SONORA - ONDA QUADRA 16 BATTUTE IN LOOP
+===================================================== */
+
+(function initSoundtrack() {
+    var stCtx = null;
+    var stPlaying = false;
+
+    var NOTE_FREQ = {
+        G3:196.00, Bb3:233.08, B3:246.94,
+        C4:261.63, D4:293.66, Eb4:311.13, F4:349.23,
+        Fs4:369.99, G4:392.00, Ab4:415.30, A4:440.00,
+        Bb4:466.16, C5:523.25
+    };
+
+    var BPM = 130;
+    var Q = 60 / BPM;
+    var E = Q / 2;
+    var S = Q / 4;
+
+    // [nota, durata] — null = pausa
+    var melody = [
+        // Battuta 1
+        ["C4",E],["Eb4",E],["G4",Q],["Fs4",E],["G4",E],["Bb4",Q],
+        // Battuta 2
+        ["G4",E],["Fs4",E],["F4",Q],["Eb4",E],["D4",E],["C4",Q],
+        // Battuta 3
+        ["C4",E],["Eb4",E],["Ab4",Q],["G4",E],["Fs4",E],["G4",Q],
+        // Battuta 4
+        ["Bb4",E],["G4",E],["Eb4",Q],["D4",E],["C4",E],[null,Q],
+        // Battuta 5
+        ["G3",E],["C4",E],["Eb4",E],["G4",E],["Fs4",Q],["F4",E],["Eb4",E],
+        // Battuta 6
+        ["D4",E],["F4",E],["Ab4",Q],["G4",E],["Fs4",E],["G4",Q],
+        // Battuta 7
+        ["C5",E],["Bb4",E],["Ab4",Q],["G4",E],["Fs4",E],["F4",Q],
+        // Battuta 8
+        ["Eb4",E],["D4",E],["C4",Q],["G3",E],["Bb3",E],["C4",Q],
+        // Battuta 9
+        ["C4",E],["Eb4",E],["G4",Q],["Bb4",E],["G4",E],["Fs4",Q],
+        // Battuta 10
+        ["F4",E],["Ab4",E],["C5",Q],["Bb4",E],["Ab4",E],["G4",Q],
+        // Battuta 11
+        ["Eb4",E],["G4",E],["Bb4",Q],["A4",E],["Ab4",E],["G4",Q],
+        // Battuta 12
+        ["Fs4",E],["G4",E],["Eb4",Q],["D4",E],["C4",E],["Bb3",Q],
+        // Battuta 13
+        ["G3",E],["C4",E],["Eb4",E],["Fs4",E],["G4",Q],["Bb4",E],["G4",E],
+        // Battuta 14
+        ["Ab4",E],["G4",E],["Fs4",Q],["F4",E],["Eb4",E],["D4",Q],
+        // Battuta 15
+        ["C4",E],["Eb4",E],["G4",Q],["Bb4",E],["A4",E],["Ab4",Q],
+        // Battuta 16
+        ["G4",E],["Fs4",E],["F4",E],["Eb4",E],["D4",Q],["G3",E],["B3",E]
+    ];
+
+    // Calcola durata totale del loop
+    var loopDuration = 0;
+    for (var m = 0; m < melody.length; m++) loopDuration += melody[m][1];
+
+    function scheduleMelody(startTime) {
+        var t = startTime;
+        for (var i = 0; i < melody.length; i++) {
+            var note = melody[i][0];
+            var dur = melody[i][1];
+            if (note !== null) {
+                var freq = NOTE_FREQ[note];
+                if (freq) {
+                    var osc = stCtx.createOscillator();
+                    var g = stCtx.createGain();
+                    osc.type = "square";
+                    osc.frequency.value = freq;
+
+                    var noteDur = dur * 0.82;
+                    var attack = 0.012;
+                    var release = 0.018;
+
+                    g.gain.setValueAtTime(0, t);
+                    g.gain.linearRampToValueAtTime(0.05, t + attack);
+                    if (noteDur > attack + release) {
+                        g.gain.setValueAtTime(0.05, t + noteDur - release);
+                    }
+                    g.gain.linearRampToValueAtTime(0, t + noteDur);
+
+                    osc.connect(g);
+                    g.connect(stCtx.destination);
+                    osc.start(t);
+                    osc.stop(t + noteDur + 0.005);
+                }
+            }
+            t += dur;
+        }
+    }
+
+    // Buffer riutilizzabili per la batteria
+    var hhBuffer = null;
+    var kickBuffer = null;
+
+    function createHiHatBuffer() {
+        var len = Math.floor(stCtx.sampleRate * 0.04);
+        var buf = stCtx.createBuffer(1, len, stCtx.sampleRate);
+        var data = buf.getChannelData(0);
+        for (var i = 0; i < len; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (stCtx.sampleRate * 0.008));
+        }
+        return buf;
+    }
+
+    function createKickBuffer() {
+        var len = Math.floor(stCtx.sampleRate * 0.12);
+        var buf = stCtx.createBuffer(1, len, stCtx.sampleRate);
+        var data = buf.getChannelData(0);
+        for (var i = 0; i < len; i++) {
+            var t = i / stCtx.sampleRate;
+            // Sinusoide che scende rapidamente da 150 Hz a 40 Hz
+            var freq = 150 * Math.exp(-t * 30) + 40;
+            data[i] = Math.sin(2 * Math.PI * freq * t) * Math.exp(-t * 18);
+        }
+        return buf;
+    }
+
+    function playHH(time) {
+        var src = stCtx.createBufferSource();
+        src.buffer = hhBuffer;
+        var filt = stCtx.createBiquadFilter();
+        filt.type = "highpass";
+        filt.frequency.value = 7000;
+        var g = stCtx.createGain();
+        g.gain.setValueAtTime(0.045, time);
+        g.gain.exponentialRampToValueAtTime(0.001, time + 0.035);
+        src.connect(filt);
+        filt.connect(g);
+        g.connect(stCtx.destination);
+        src.start(time);
+    }
+
+    function playKick(time) {
+        var src = stCtx.createBufferSource();
+        src.buffer = kickBuffer;
+        var g = stCtx.createGain();
+        g.gain.setValueAtTime(0.08, time);
+        g.gain.exponentialRampToValueAtTime(0.001, time + 0.10);
+        src.connect(g);
+        g.connect(stCtx.destination);
+        src.start(time);
+    }
+
+    function scheduleDrums(startTime) {
+        // 16 battute in 4/4 = 64 quarti = 256 sedicesimi
+        var totalSixteenths = Math.round(loopDuration / S);
+        for (var i = 0; i < totalSixteenths; i++) {
+            var t = startTime + i * S;
+            // Charleston su ogni sedicesimo
+            playHH(t);
+            // Cassa sul beat 1 e 3 di ogni battuta (ogni 16 sedicesimi = 1 battuta)
+            var posInBar = i % 16;
+            if (posInBar === 0 || posInBar === 8) {
+                playKick(t);
+            }
+        }
+    }
+
+    function loopForever() {
+        if (!stPlaying) return;
+
+        // Crea buffer batteria se non esistono ancora
+        if (!hhBuffer) hhBuffer = createHiHatBuffer();
+        if (!kickBuffer) kickBuffer = createKickBuffer();
+
+        var loopStart = stCtx.currentTime + 0.08;
+        scheduleMelody(loopStart);
+        scheduleDrums(loopStart);
+        setTimeout(loopForever, (loopDuration - 0.3) * 1000);
+    }
+
+    function startPlayback() {
+        if (stPlaying) return;
+        try {
+            var AC = window.AudioContext || window.webkitAudioContext;
+            if (!AC) return;
+            stCtx = new AC();
+            if (stCtx.state === "suspended") stCtx.resume();
+            stPlaying = true;
+            loopForever();
+        } catch(e) {}
+    }
+
+    // Avvia alla prima interazione utente (necessario per mobile)
+    startPlayback();
+    document.addEventListener("click", startPlayback, { once: true });
+    document.addEventListener("keydown", startPlayback, { once: true });
+    document.addEventListener("touchstart", startPlayback, { once: true });
+})();
+</script>
+
+</body>
+</html>
